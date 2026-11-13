@@ -1,0 +1,229 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-serif: var(--font-serif-loaded), Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-sans-loaded), Arial, Helvetica, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  color-scheme: light;
+  --background: #fbf8f3;
+  --foreground: #33251f;
+  --card: #ffffff;
+  --card-foreground: #33251f;
+  --popover: #fffdf9;
+  --popover-foreground: #33251f;
+  --primary: #39231e;
+  --primary-foreground: #ffffff;
+  --secondary: #f3ece2;
+  --secondary-foreground: #33251f;
+  --muted: #f3ece2;
+  --muted-foreground: #77675d;
+  --accent: #a44436;
+  --accent-foreground: #ffffff;
+  --destructive: #a44436;
+  --border: #e8ded2;
+  --input: #ded3c7;
+  --ring: #a44436;
+  --radius-md: 0.5rem;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+.blog-rich-content {
+  color: #4b3c33;
+  font-size: 1rem;
+  line-height: 1.85;
+}
+
+.blog-rich-content > * + * {
+  margin-top: 1.25rem;
+}
+
+.blog-rich-content h2 {
+  margin-top: 2.25rem;
+  font-family: var(--font-serif);
+  font-size: 1.875rem;
+  line-height: 1.2;
+  color: #39231e;
+}
+
+.blog-rich-content h3 {
+  margin-top: 1.75rem;
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  line-height: 1.25;
+  color: #39231e;
+}
+
+.blog-rich-content h4 {
+  margin-top: 1.5rem;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  color: #39231e;
+}
+
+.blog-rich-content p {
+  line-height: 1.85;
+}
+
+.blog-rich-content strong,
+.blog-rich-content b {
+  font-weight: 600;
+  color: #33251f;
+}
+
+.blog-rich-content em,
+.blog-rich-content i {
+  font-style: italic;
+}
+
+.blog-rich-content u {
+  text-decoration: underline;
+  text-decoration-color: #d6af7a;
+  text-underline-offset: 4px;
+}
+
+.blog-rich-content a {
+  color: #8d3428;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.blog-rich-content a:hover {
+  color: #39231e;
+}
+
+.blog-rich-content ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+}
+
+.blog-rich-content ol {
+  list-style: decimal;
+  padding-left: 1.4rem;
+}
+
+.blog-rich-content li + li {
+  margin-top: 0.5rem;
+}
+
+.blog-rich-content blockquote {
+  margin: 1.75rem 0;
+  border-left: 2px solid #a44436;
+  background: #f3ece2;
+  padding: 1.15rem 1.35rem;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-style: italic;
+  line-height: 1.55;
+  color: #39231e;
+}
+
+.blog-rich-content figure {
+  margin: 1.75rem 0;
+  border: 1px solid #e8ded2;
+  background: #fffdf9;
+  padding: 0.75rem;
+}
+
+.blog-rich-content img {
+  display: block;
+  width: 100%;
+  max-height: 560px;
+  object-fit: cover;
+  background: #f3ece2;
+}
+
+.blog-rich-content figcaption {
+  margin-top: 0.65rem;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #77675d;
+}
+
+.blog-rich-content hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid #e8ded2;
+}
+
+.blog-rich-content.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: #5f524a;
+}
+
+.blog-rich-content.text-sm > * + * {
+  margin-top: 0.75rem;
+}
+
+.blog-rich-content.text-sm p {
+  line-height: 1.7;
+}
+
+.blog-rich-content.text-sm h2 {
+  margin-top: 1rem;
+  font-size: 1.25rem;
+}
+
+.blog-rich-content.text-sm h3 {
+  margin-top: 0.85rem;
+  font-size: 1.1rem;
+}
