@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { BlogCoverImage } from "@/components/storefront/blog-cover-image";
 import type { StoreCategory } from "@/src/lib/store/catalog";
 
 type SliderState = {
@@ -40,9 +41,7 @@ export function CategorySlider({
     const visibleRatio =
       el.scrollWidth > 0 ? Math.min(1, el.clientWidth / el.scrollWidth) : 1;
     const progress =
-      maxScroll > 0
-        ? Math.min(1, Math.max(0, el.scrollLeft / maxScroll))
-        : 0;
+      maxScroll > 0 ? Math.min(1, Math.max(0, el.scrollLeft / maxScroll)) : 0;
     const thumbWidthPct = Math.max(15, visibleRatio * 100);
 
     setSliderState({
@@ -113,23 +112,23 @@ export function CategorySlider({
     <section
       aria-roledescription="carousel"
       aria-label="Shop by category"
-      className="border-y border-[#e8ded2] bg-[#f3ece2] py-10 sm:py-14"
+      className="border-y border-border bg-secondary py-10 sm:py-14"
     >
       <div className="container mx-auto px-4 sm:px-6">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[#a44436]">
-              Shop by craft
+            <p className="text-[10px] uppercase tracking-[0.3em] text-accent">
+              Find your style
             </p>
             <h2 className="mt-2 font-serif text-3xl sm:text-4xl">
-              Find your occasion
+              Explore Categories
             </h2>
           </div>
 
           <div className="flex items-center gap-3">
             <Link
               href="/collection"
-              className="hidden items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] underline underline-offset-4 transition hover:text-[#a44436] sm:inline-flex"
+              className="hidden items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] underline underline-offset-4 transition hover:text-accent sm:inline-flex"
             >
               View all <ArrowRight size={13} />
             </Link>
@@ -143,7 +142,7 @@ export function CategorySlider({
                 onClick={() => scrollByDirection(-1)}
                 disabled={!sliderState.canPrev}
                 aria-label="Previous categories"
-                className="flex size-9 items-center justify-center border border-[#d9cbbd] bg-[#fffdf9] text-[#39231e] transition hover:border-[#39231e] hover:bg-[#39231e] hover:text-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-[#d9cbbd] disabled:hover:bg-[#fffdf9] disabled:hover:text-[#39231e]"
+                className="flex size-9 items-center justify-center border border-input bg-popover text-primary transition hover:border-primary hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-input disabled:hover:bg-popover disabled:hover:text-primary"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -152,7 +151,7 @@ export function CategorySlider({
                 onClick={() => scrollByDirection(1)}
                 disabled={!sliderState.canNext}
                 aria-label="Next categories"
-                className="flex size-9 items-center justify-center border border-[#d9cbbd] bg-[#fffdf9] text-[#39231e] transition hover:border-[#39231e] hover:bg-[#39231e] hover:text-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-[#d9cbbd] disabled:hover:bg-[#fffdf9] disabled:hover:text-[#39231e]"
+                className="flex size-9 items-center justify-center border border-input bg-popover text-primary transition hover:border-primary hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-input disabled:hover:bg-popover disabled:hover:text-primary"
               >
                 <ChevronRight size={16} />
               </button>
@@ -168,23 +167,22 @@ export function CategorySlider({
             <Link
               key={category.slug}
               href={`/categories/${category.slug}`}
-              className={`group relative overflow-hidden bg-[#d6bda4] ${SLIDE_SIZE_CLASSES}`}
+              className={`group relative overflow-hidden bg-secondary ${SLIDE_SIZE_CLASSES}`}
             >
-              <Image
+              <BlogCoverImage
                 src={category.image}
                 alt={category.name}
-                fill
                 sizes="(max-width: 639px) 46vw, (max-width: 1023px) 33vw, 25vw"
                 className="object-cover object-center transition duration-500 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#39231e]/80 via-[#39231e]/15 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/15 to-transparent" />
               <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2 sm:inset-x-4 sm:bottom-4">
                 <span className="font-serif text-base leading-tight text-white sm:text-xl">
                   {category.name}
                 </span>
                 <ArrowRight
                   size={14}
-                  className="shrink-0 text-[#f2d9b6] opacity-80 transition group-hover:translate-x-0.5 group-hover:opacity-100"
+                  className="shrink-0 text-amber-200/90 opacity-80 transition group-hover:translate-x-0.5 group-hover:opacity-100"
                 />
               </div>
             </Link>
@@ -192,29 +190,26 @@ export function CategorySlider({
 
           <Link
             href="/collection"
-            className={`group relative flex flex-col justify-between overflow-hidden bg-[#39231e] p-4 text-[#f8ede0] transition hover:bg-[#4b2f28] sm:p-5 ${SLIDE_SIZE_CLASSES}`}
+            aria-label="Explore All Collections"
+            className={`group relative overflow-hidden bg-secondary ${SLIDE_SIZE_CLASSES}`}
           >
-            <span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#d6af7a]">
-              All {categories.length} edits
-            </span>
-            <div>
-              <span className="block font-serif text-base leading-snug sm:text-xl">
-                Explore full collection
-              </span>
-              <span className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f2d9b6] transition group-hover:translate-x-0.5">
-                Shop all <ArrowRight size={12} />
-              </span>
-            </div>
+            <Image
+              src="/Explore-All-Collections.png"
+              alt="Explore All Collections"
+              fill
+              sizes="(max-width: 639px) 46vw, (max-width: 1023px) 33vw, 25vw"
+              className="object-cover object-center transition duration-500 group-hover:scale-105"
+            />
           </Link>
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-4">
           <div
             aria-hidden="true"
-            className="relative h-[2px] flex-1 overflow-hidden bg-[#dfd3c3]"
+            className="relative h-[2px] flex-1 overflow-hidden bg-border"
           >
             <div
-              className="absolute inset-y-0 bg-[#39231e]"
+              className="absolute inset-y-0 bg-primary"
               style={{
                 width: `${sliderState.thumbWidthPct}%`,
                 left: `${sliderState.thumbOffsetPct}%`,
@@ -232,4 +227,3 @@ export function CategorySlider({
     </section>
   );
 }
-

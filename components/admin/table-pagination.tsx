@@ -90,7 +90,7 @@ export function TablePagination({
   const visiblePages = getVisiblePages(page, totalPages);
 
   return (
-    <div className="flex flex-col gap-3 border-t border-[#eee8e0] bg-[#faf7f3] px-4 py-3 text-xs text-[#6f6359] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <div className="flex flex-col gap-3 border-t border-border bg-background px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div className="flex flex-wrap items-center gap-3">
         <label className="inline-flex items-center gap-2">
           <span>Show</span>
@@ -98,7 +98,7 @@ export function TablePagination({
             aria-label="Entries per page"
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="border border-[#dfd8cf] bg-white px-2.5 py-1.5 text-xs font-medium text-[#39231e] outline-none focus:border-[#8d3428]"
+            className="border border-border bg-white px-2.5 py-1.5 text-xs font-medium text-primary outline-none focus:border-accent"
           >
             {pageSizeOptions.map((option) => (
               <option key={option} value={option}>
@@ -109,13 +109,13 @@ export function TablePagination({
           <span>per page</span>
         </label>
 
-        <span className="text-[#8b796b]">
+        <span className="text-muted-foreground">
           Showing{" "}
-          <strong className="font-medium text-[#39231e]">
+          <strong className="font-medium text-primary">
             {totalItems === 0 ? 0 : `${startEntry}–${endEntry}`}
           </strong>{" "}
           of{" "}
-          <strong className="font-medium text-[#39231e]">{totalItems}</strong>{" "}
+          <strong className="font-medium text-primary">{totalItems}</strong>{" "}
           {itemLabel}
         </span>
       </div>
@@ -129,7 +129,7 @@ export function TablePagination({
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
           aria-label="Previous page"
-          className="inline-flex h-8 items-center gap-1 border border-[#dfd8cf] bg-white px-2.5 text-xs font-medium text-[#39231e] transition hover:border-[#8d3428] disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-8 items-center gap-1 border border-border bg-white px-2.5 text-xs font-medium text-primary transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ChevronLeft size={14} />
           <span className="hidden sm:inline">Prev</span>
@@ -139,7 +139,7 @@ export function TablePagination({
           entry === "ellipsis" ? (
             <span
               key={`ellipsis-${idx}`}
-              className="px-2 text-[#8b796b]"
+              className="px-2 text-muted-foreground"
               aria-hidden="true"
             >
               …
@@ -153,8 +153,8 @@ export function TablePagination({
               aria-current={entry === page ? "page" : undefined}
               className={`flex h-8 min-w-8 items-center justify-center border px-2 text-xs font-medium transition ${
                 entry === page
-                  ? "border-[#39231e] bg-[#39231e] text-white"
-                  : "border-[#dfd8cf] bg-white text-[#5f5750] hover:border-[#8d3428] hover:text-[#39231e]"
+                  ? "border-primary bg-primary text-white"
+                  : "border-border bg-white text-muted-foreground hover:border-accent hover:text-primary"
               }`}
             >
               {entry}
@@ -167,7 +167,7 @@ export function TablePagination({
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
           aria-label="Next page"
-          className="inline-flex h-8 items-center gap-1 border border-[#dfd8cf] bg-white px-2.5 text-xs font-medium text-[#39231e] transition hover:border-[#8d3428] disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-8 items-center gap-1 border border-border bg-white px-2.5 text-xs font-medium text-primary transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span className="hidden sm:inline">Next</span>
           <ChevronRight size={14} />

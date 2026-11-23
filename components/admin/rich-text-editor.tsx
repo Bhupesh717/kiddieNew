@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { blogApiService } from "@/src/lib/api/services/blog-service";
+import { getAuthHeaders } from "@/src/lib/api/auth-token";
 import {
   AVAILABLE_BLOG_IMAGES,
   sanitizeBlogHtml,
@@ -33,6 +34,7 @@ type RichTextEditorProps = {
   uploadUrl?: string;
   minHeightClass?: string;
   ariaLabel?: string;
+  hideImageOption?: boolean;
 };
 
 type ActivePanel = "none" | "image" | "link";
@@ -52,6 +54,7 @@ export function RichTextEditor({
   uploadUrl,
   minHeightClass = "min-h-[300px] max-h-[480px]",
   ariaLabel = "Rich text content editor",
+  hideImageOption = false,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const savedRangeRef = useRef<Range | null>(null);
@@ -153,8 +156,11 @@ export function RichTextEditor({
       if (uploadUrl) {
         const formData = new FormData();
         formData.append("file", file);
+        const headers = getAuthHeaders(false) as Record<string, string>;
+        delete headers["Content-Type"];
         const response = await fetch(uploadUrl, {
           method: "POST",
+          headers,
           body: formData,
         });
         const payload = (await response.json().catch(() => null)) as {
@@ -193,7 +199,7 @@ export function RichTextEditor({
     }
 
     const safeSrc = escapeHtml(cleanedUrl);
-    const safeAlt = escapeHtml(imageAlt.trim() || "Majisavesh journal detail");
+    const safeAlt = escapeHtml(imageAlt.trim() || "KiddieQuick journal detail");
     const captionHtml = imageCaption.trim()
       ? `<figcaption>${escapeHtml(imageCaption.trim())}</figcaption>`
       : "";
@@ -219,11 +225,11 @@ export function RichTextEditor({
   }
 
   const toolbarBtnClass =
-    "inline-flex h-8 min-w-8 items-center justify-center border border-transparent px-1.5 text-xs text-[#4b3c33] transition hover:border-[#dfd8cf] hover:bg-white hover:text-[#39231e]";
+    "inline-flex h-8 min-w-8 items-center justify-center border border-transparent px-1.5 text-xs text-foreground/90 transition hover:border-border hover:bg-white hover:text-primary";
 
   return (
-    <div className="border border-[#dfd8cf] bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e8ded2] bg-[#faf7f3] px-2.5 py-2">
+    <div className="border border-border bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-2.5 py-2">
         <div className="flex flex-wrap items-center gap-0.5">
           <button
             type="button"
@@ -259,7 +265,7 @@ export function RichTextEditor({
             <Heading3 size={15} />
           </button>
 
-          <span className="mx-1 h-4 w-px bg-[#dfd8cf]" aria-hidden="true" />
+          <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
 
           <button
             type="button"
@@ -295,7 +301,7 @@ export function RichTextEditor({
             <Underline size={14} />
           </button>
 
-          <span className="mx-1 h-4 w-px bg-[#dfd8cf]" aria-hidden="true" />
+          <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
 
           <button
             type="button"
@@ -342,7 +348,7 @@ export function RichTextEditor({
             <Minus size={14} />
           </button>
 
-          <span className="mx-1 h-4 w-px bg-[#dfd8cf]" aria-hidden="true" />
+          <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
 
           <button
             type="button"
@@ -350,23 +356,25 @@ export function RichTextEditor({
             onClick={() => openSubPanel("link")}
             title="Insert link"
             aria-label="Insert link"
-            className={`${toolbarBtnClass} ${panel === "link" ? "border-[#8d3428] bg-white text-[#8d3428]" : ""}`}
+            className={`${toolbarBtnClass} ${panel === "link" ? "border-accent bg-white text-accent" : ""}`}
           >
             <Link2 size={14} />
           </button>
 
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => openSubPanel("image")}
-            className={`inline-flex h-8 items-center gap-1.5 border px-2.5 text-[11px] font-medium transition ${
-              panel === "image"
-                ? "border-[#8d3428] bg-[#8d3428] text-white"
-                : "border-[#d8ccc0] bg-white text-[#39231e] hover:border-[#8d3428]"
-            }`}
-          >
-            <ImagePlus size={14} /> Add detail image
-          </button>
+          {!hideImageOption && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => openSubPanel("image")}
+              className={`inline-flex h-8 items-center gap-1.5 border px-2.5 text-[11px] font-medium transition ${
+                panel === "image"
+                  ? "border-accent bg-accent text-white"
+                  : "border-input bg-white text-primary hover:border-accent"
+              }`}
+            >
+              <ImagePlus size={14} /> Add detail image
+            </button>
+          )}
 
           <button
             type="button"
@@ -381,14 +389,14 @@ export function RichTextEditor({
           </button>
         </div>
 
-        <div className="flex items-center border border-[#dfd8cf] bg-white p-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
+        <div className="flex items-center border border-border bg-white p-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
           <button
             type="button"
             onClick={() => setMode("visual")}
             className={`inline-flex items-center gap-1 px-2.5 py-1 transition ${
               mode === "visual"
-                ? "bg-[#39231e] text-white"
-                : "text-[#77675d] hover:text-[#39231e]"
+                ? "bg-primary text-white"
+                : "text-muted-foreground hover:text-primary"
             }`}
           >
             <Eye size={12} /> Visual
@@ -398,8 +406,8 @@ export function RichTextEditor({
             onClick={() => setMode("html")}
             className={`inline-flex items-center gap-1 px-2.5 py-1 transition ${
               mode === "html"
-                ? "bg-[#39231e] text-white"
-                : "text-[#77675d] hover:text-[#39231e]"
+                ? "bg-primary text-white"
+                : "text-muted-foreground hover:text-primary"
             }`}
           >
             <Code2 size={12} /> HTML
@@ -407,17 +415,17 @@ export function RichTextEditor({
         </div>
       </div>
 
-      {panel === "image" && (
-        <div className="border-b border-[#e8ded2] bg-[#fdfaf5] p-3.5">
+      {!hideImageOption && panel === "image" && (
+        <div className="border-b border-border bg-popover p-3.5">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a44436]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
               Insert image inside blog content
             </p>
             <button
               type="button"
               onClick={() => setPanel("none")}
               aria-label="Close image panel"
-              className="p-1 text-[#77675d] hover:text-[#39231e]"
+              className="p-1 text-muted-foreground hover:text-primary"
             >
               <X size={14} />
             </button>
@@ -431,8 +439,8 @@ export function RichTextEditor({
                 onClick={() => setImageUrl(preset.value)}
                 className={`border px-2.5 py-1 text-[11px] transition ${
                   imageUrl === preset.value
-                    ? "border-[#8d3428] bg-[#f7eee9] font-medium text-[#8d3428]"
-                    : "border-[#ded3c7] bg-white text-[#5f5750] hover:border-[#39231e]"
+                    ? "border-accent bg-accent/10 font-medium text-accent"
+                    : "border-input bg-white text-muted-foreground hover:border-primary"
                 }`}
               >
                 {preset.label}
@@ -446,7 +454,7 @@ export function RichTextEditor({
               value={imageUrl}
               onChange={(event) => setImageUrl(event.target.value)}
               placeholder="Paste image URL (https://... or /products/...)"
-              className="w-full border border-[#ded3c7] bg-white px-3 py-2 text-xs text-[#33251f] outline-none focus:border-[#8d3428]"
+              className="w-full border border-input bg-white px-3 py-2 text-xs text-foreground outline-none focus:border-accent"
             />
             <div>
               <input
@@ -460,7 +468,7 @@ export function RichTextEditor({
                 type="button"
                 disabled={uploadingImage}
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex h-full w-full items-center justify-center gap-1.5 border border-[#39231e] bg-white px-3 py-2 text-[11px] font-medium text-[#39231e] transition hover:bg-[#39231e] hover:text-white disabled:opacity-50"
+                className="inline-flex h-full w-full items-center justify-center gap-1.5 border border-primary bg-white px-3 py-2 text-[11px] font-medium text-primary transition hover:bg-primary hover:text-white disabled:opacity-50"
               >
                 <Upload size={13} />
                 {uploadingImage ? "Uploading..." : "Upload image"}
@@ -474,19 +482,19 @@ export function RichTextEditor({
               value={imageAlt}
               onChange={(event) => setImageAlt(event.target.value)}
               placeholder="Image alt text (for SEO & accessibility)"
-              className="border border-[#ded3c7] bg-white px-3 py-2 text-xs text-[#33251f] outline-none focus:border-[#8d3428]"
+              className="border border-input bg-white px-3 py-2 text-xs text-foreground outline-none focus:border-accent"
             />
             <input
               type="text"
               value={imageCaption}
               onChange={(event) => setImageCaption(event.target.value)}
               placeholder="Optional image caption"
-              className="border border-[#ded3c7] bg-white px-3 py-2 text-xs text-[#33251f] outline-none focus:border-[#8d3428]"
+              className="border border-input bg-white px-3 py-2 text-xs text-foreground outline-none focus:border-accent"
             />
           </div>
 
           {imageError && (
-            <p className="mt-2 text-xs text-[#a44436]">{imageError}</p>
+            <p className="mt-2 text-xs text-accent">{imageError}</p>
           )}
 
           <div className="mt-3 flex items-center justify-between gap-3">
@@ -496,9 +504,9 @@ export function RichTextEditor({
                 <img
                   src={imageUrl}
                   alt="Preview"
-                  className="size-10 border border-[#ded3c7] bg-[#f3ece2] object-cover"
+                  className="size-10 border border-input bg-secondary object-cover"
                 />
-                <span className="max-w-[200px] truncate text-[11px] text-[#77675d]">
+                <span className="max-w-[200px] truncate text-[11px] text-muted-foreground">
                   Ready to insert
                 </span>
               </div>
@@ -508,7 +516,7 @@ export function RichTextEditor({
             <button
               type="button"
               onClick={handleInsertImage}
-              className="bg-[#39231e] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#52342c]"
+              className="bg-primary px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-primary/90"
             >
               Insert into content
             </button>
@@ -517,16 +525,16 @@ export function RichTextEditor({
       )}
 
       {panel === "link" && (
-        <div className="border-b border-[#e8ded2] bg-[#fdfaf5] p-3.5">
+        <div className="border-b border-border bg-popover p-3.5">
           <div className="mb-2.5 flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a44436]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
               Insert link
             </p>
             <button
               type="button"
               onClick={() => setPanel("none")}
               aria-label="Close link panel"
-              className="p-1 text-[#77675d] hover:text-[#39231e]"
+              className="p-1 text-muted-foreground hover:text-primary"
             >
               <X size={14} />
             </button>
@@ -537,19 +545,19 @@ export function RichTextEditor({
               value={linkLabel}
               onChange={(event) => setLinkLabel(event.target.value)}
               placeholder="Link text (optional if text selected)"
-              className="border border-[#ded3c7] bg-white px-3 py-2 text-xs text-[#33251f] outline-none focus:border-[#8d3428]"
+              className="border border-input bg-white px-3 py-2 text-xs text-foreground outline-none focus:border-accent"
             />
             <input
               type="text"
               value={linkUrl}
               onChange={(event) => setLinkUrl(event.target.value)}
               placeholder="/collection or https://..."
-              className="border border-[#ded3c7] bg-white px-3 py-2 text-xs text-[#33251f] outline-none focus:border-[#8d3428]"
+              className="border border-input bg-white px-3 py-2 text-xs text-foreground outline-none focus:border-accent"
             />
             <button
               type="button"
               onClick={handleInsertLink}
-              className="bg-[#39231e] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white"
+              className="bg-primary px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white"
             >
               Apply link
             </button>
@@ -573,8 +581,8 @@ export function RichTextEditor({
           rows={13}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="<h2>Heading</h2><p>Write or paste HTML...</p><figure><img src='/products/teal-poshak.png' alt='' /></figure>"
-          className="w-full resize-y bg-[#fffdf9] p-4 font-mono text-xs leading-6 text-[#33251f] outline-none"
+          placeholder="<h2>Heading</h2><p>Write or paste HTML...</p><figure><img src='/products/rose-silk.png' alt='' /></figure>"
+          className="w-full resize-y bg-popover p-4 font-mono text-xs leading-6 text-foreground outline-none"
         />
       )}
     </div>

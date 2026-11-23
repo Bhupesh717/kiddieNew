@@ -9,7 +9,7 @@ import type { StoreBanner } from "@/src/lib/store/banners";
 import heroBanner from "@/public/Majisavesh_Banner.png";
 
 const DEFAULT_BANNER_ALT =
-  "Majisavesh — The Royal Attire of Rajasthan. Authentic Rajasthani Dresses for Every Occasion";
+  "KiddieQuick — Smart Kids, Men & Women Wear. Modern Indian & Western Collections";
 
 function BannerImage({
   banner,
@@ -65,16 +65,15 @@ export function HeroBanner({ banners }: { banners: StoreBanner[] }) {
   if (count === 1) {
     return (
       <section
-        aria-label="Majisavesh featured banner"
-        className="w-full bg-[#fbf8f3]"
+        aria-label="KiddieQuick featured banner"
+        className="w-full bg-background"
       >
         <h1 className="sr-only">
-          Majisavesh — The Royal Attire of Rajasthan | Authentic Rajasthani
-          Dresses for Every Occasion
+          KiddieQuick — Smart Kids, Men &amp; Women Fashion | Daily &amp; Festive Collections
         </h1>
         <Link
           href="/collection"
-          className="relative mx-auto block aspect-video w-full max-w-[1672px] overflow-hidden bg-[#f3ece2]"
+          className="relative mx-auto block aspect-video w-full max-w-[1672px] overflow-hidden bg-secondary"
         >
           <BannerImage banner={current} preload />
         </Link>
@@ -84,18 +83,17 @@ export function HeroBanner({ banners }: { banners: StoreBanner[] }) {
 
   return (
     <section
-      aria-label="Majisavesh featured banners"
+      aria-label="KiddieQuick featured banners"
       aria-roledescription="carousel"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className="relative w-full bg-[#fbf8f3]"
+      className="relative w-full bg-background"
     >
       <h1 className="sr-only">
-        Majisavesh — The Royal Attire of Rajasthan | Authentic Rajasthani
-        Dresses for Every Occasion
+        KiddieQuick — Smart Kids, Men &amp; Women Fashion | Daily &amp; Festive Collections
       </h1>
 
-      <div className="relative mx-auto aspect-video w-full max-w-[1672px] overflow-hidden bg-[#f3ece2]">
+      <div className="relative mx-auto aspect-video w-full max-w-[1672px] overflow-hidden bg-secondary">
         <Link href="/collection" className="relative block size-full">
           <BannerImage banner={current} preload={safeIndex === 0} />
         </Link>
@@ -104,7 +102,7 @@ export function HeroBanner({ banners }: { banners: StoreBanner[] }) {
           type="button"
           onClick={() => setActiveIndex((prev) => (prev - 1 + count) % count)}
           aria-label="Previous banner"
-          className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#39231e]/75 text-white transition hover:bg-[#39231e] sm:left-5 sm:size-10"
+          className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-primary/75 text-white transition hover:bg-primary sm:left-5 sm:size-10"
         >
           <ChevronLeft size={18} />
         </button>
@@ -113,7 +111,7 @@ export function HeroBanner({ banners }: { banners: StoreBanner[] }) {
           type="button"
           onClick={() => setActiveIndex((prev) => (prev + 1) % count)}
           aria-label="Next banner"
-          className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#39231e]/75 text-white transition hover:bg-[#39231e] sm:right-5 sm:size-10"
+          className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-primary/75 text-white transition hover:bg-primary sm:right-5 sm:size-10"
         >
           <ChevronRight size={18} />
         </button>
@@ -128,8 +126,8 @@ export function HeroBanner({ banners }: { banners: StoreBanner[] }) {
               aria-current={idx === safeIndex ? "true" : undefined}
               className={`h-2 rounded-full transition-all ${
                 idx === safeIndex
-                  ? "w-7 bg-[#fffdf9]"
-                  : "w-2 bg-[#fffdf9]/55 hover:bg-[#fffdf9]/85"
+                  ? "w-7 bg-popover"
+                  : "w-2 bg-popover/55 hover:bg-popover/85"
               }`}
             />
           ))}

@@ -2,37 +2,56 @@
 
 import { useEffect, useState } from "react";
 import { ProductCard } from "@/components/storefront/product-card";
+import { productApiService } from "@/src/lib/api/services/product-service";
 import type { StoreProduct } from "@/src/lib/store/catalog";
 
-const ADMIN_PRODUCTS_STORAGE_KEY = "majisavesh_admin_products_v1";
-
 export function SyncedProductGrid({
-  fallbackProducts,
+  fallbackProducts = [],
   categorySlug,
   limit,
+  featured,
 }: {
-  fallbackProducts: StoreProduct[];
+  fallbackProducts?: StoreProduct[];
   categorySlug?: string;
   limit?: number;
+  featured?: boolean;
 }) {
-  const [items, setItems] = useState<StoreProduct[]>(fallbackProducts);
+  const [items, setItems] = useState<StoreProduct[]>(() =>
+    featured ? fallbackProducts.filter((p) => p.isFeatured || p.is_featured) : fallbackProducts,
+  );
+  const [loading, setLoading] = useState(fallbackProducts.length === 0);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(ADMIN_PRODUCTS_STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as unknown;
-      if (!Array.isArray(parsed) || parsed.length === 0) return;
+    productApiService
+      .list(categorySlug, limit, featured)
+      .then((live) => {
+        if (Array.isArray(live)) {
+          setItems(live);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load storefront products", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [categorySlug, limit, featured]);
 
-      const typed = parsed as StoreProduct[];
-      const scoped = categorySlug
-        ? typed.filter((product) => product.categorySlug === categorySlug)
-        : typed;
-      setItems(typeof limit === "number" ? scoped.slice(0, limit) : scoped);
-    } catch {
-      // Ignore malformed cache
-    }
-  }, [categorySlug, limit]);
+  if (loading && items.length === 0) {
+    return (
+      <div className="py-12 text-center text-xs text-muted-foreground">
+        Loading products from atelier...
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="py-12 text-center text-xs text-muted-foreground">
+        No pieces currently available in this edit.
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4">
@@ -42,4 +61,3 @@ export function SyncedProductGrid({
     </div>
   );
 }
-

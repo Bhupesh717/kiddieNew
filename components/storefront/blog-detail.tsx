@@ -13,44 +13,44 @@ export function BlogDetail({
 }) {
   return (
     <article className="pb-16">
-      <div className="border-b border-[#e8ded2] bg-[#f3ece2] px-4 py-10 sm:px-6 sm:py-14">
+      <div className="border-b border-border bg-secondary px-4 py-10 sm:px-6 sm:py-14">
         <div className="container mx-auto max-w-4xl">
           <nav
             aria-label="Breadcrumb"
-            className="flex flex-wrap items-center gap-2 text-xs text-[#77675d]"
+            className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
           >
-            <Link href="/" className="hover:text-[#39231e]">
+            <Link href="/" className="hover:text-primary">
               Home
             </Link>
             <span>/</span>
-            <Link href="/blog" className="hover:text-[#39231e]">
+            <Link href="/blog" className="hover:text-primary">
               Blog
             </Link>
             <span>/</span>
-            <span className="text-[#39231e]">{post.category}</span>
+            <span className="text-primary">{post.category}</span>
           </nav>
 
-          <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#a44436]">
+          <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.28em] text-accent">
             {post.category}
           </p>
-          <h1 className="mt-3 font-serif text-4xl leading-[1.08] text-[#39231e] sm:text-5xl lg:text-6xl">
+          <h1 className="mt-3 font-serif text-4xl leading-[1.08] text-primary sm:text-5xl lg:text-6xl">
             {post.title}
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-[#5d4f47]">
+          <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
             {post.excerpt}
           </p>
 
-          <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#dfd3c4] pt-5 text-xs text-[#77675d]">
-            <span className="inline-flex items-center gap-1.5 font-medium text-[#39231e]">
-              <User size={14} className="text-[#a44436]" />
+          <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border pt-5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 font-medium text-primary">
+              <User size={14} className="text-accent" />
               {post.author}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Calendar size={14} className="text-[#a44436]" />
+              <Calendar size={14} className="text-accent" />
               {formatBlogDate(post.publishedAt)}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Clock size={14} className="text-[#a44436]" />
+              <Clock size={14} className="text-accent" />
               {post.readTime}
             </span>
           </div>
@@ -58,7 +58,7 @@ export function BlogDetail({
       </div>
 
       <div className="container mx-auto max-w-4xl px-4 pt-8 sm:px-6 sm:pt-10">
-        <figure className="overflow-hidden border border-[#e8ded2] bg-[#f3ece2]">
+        <figure className="overflow-hidden border border-border bg-secondary">
           <div className="relative aspect-[16/10] w-full overflow-hidden">
             <BlogCoverImage
               src={post.coverImage}
@@ -69,7 +69,7 @@ export function BlogDetail({
             />
           </div>
           {post.coverImageAlt && (
-            <figcaption className="border-t border-[#e8ded2] bg-[#fffdf9] px-4 py-2.5 text-center text-xs text-[#77675d]">
+            <figcaption className="border-t border-border bg-popover px-4 py-2.5 text-center text-xs text-muted-foreground">
               {post.coverImageAlt}
             </figcaption>
           )}
@@ -79,22 +79,21 @@ export function BlogDetail({
       <div className="container mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-12">
         <BlogRichContent html={post.contentHtml} />
 
-        <div className="mt-12 flex flex-col justify-between gap-5 border-y border-[#e8ded2] bg-[#f3ece2]/60 p-6 sm:flex-row sm:items-center sm:p-8">
+        <div className="mt-12 flex flex-col justify-between gap-5 border-y border-border bg-secondary/60 p-6 sm:flex-row sm:items-center sm:p-8">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#a44436]">
-              From our Jaipur atelier
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
+              Curated for your family
             </p>
-            <h2 className="mt-2 font-serif text-2xl text-[#39231e]">
-              Explore handcrafted Majisavesh edits
+            <h2 className="mt-2 font-serif text-2xl text-primary">
+              Explore KiddieQuick collections
             </h2>
-            <p className="mt-1 text-xs leading-6 text-[#6f5f55]">
-              Discover Pure Poshak, Semi Pure Poshak, Kurti Sets, and heirloom
-              accessories inspired by this story.
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">
+              Discover smart kids wear, festive Indian kurtas &amp; suits, and crisp western shirts inspired by this story.
             </p>
           </div>
           <Link
             href="/collection"
-            className="inline-flex shrink-0 items-center justify-center gap-2 bg-[#39231e] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-[#52342c]"
+            className="inline-flex shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-primary/90"
           >
             Shop collection <ArrowRight size={13} />
           </Link>
@@ -103,7 +102,7 @@ export function BlogDetail({
         <div className="mt-8">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#39231e] transition hover:text-[#a44436]"
+            className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary transition hover:text-accent"
           >
             <ArrowLeft size={14} /> Back to all stories
           </Link>
@@ -111,14 +110,14 @@ export function BlogDetail({
       </div>
 
       {relatedPosts.length > 0 && (
-        <section className="border-t border-[#e8ded2] bg-[#fffdf9] py-12 sm:py-14">
+        <section className="border-t border-border bg-popover py-12 sm:py-14">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="mb-7 flex items-end justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.28em] text-[#a44436]">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-accent">
                   Continue reading
                 </p>
-                <h2 className="mt-2 font-serif text-3xl text-[#39231e]">
+                <h2 className="mt-2 font-serif text-3xl text-primary">
                   More from the journal
                 </h2>
               </div>
@@ -134,7 +133,7 @@ export function BlogDetail({
                 <article key={related.id} className="group flex flex-col">
                   <Link
                     href={`/blog/${related.slug}`}
-                    className="relative aspect-[4/3] overflow-hidden border border-[#e8ded2] bg-[#eee4d8]"
+                    className="relative aspect-[4/3] overflow-hidden border border-border bg-secondary"
                   >
                     <BlogCoverImage
                       src={related.coverImage}
@@ -143,18 +142,18 @@ export function BlogDetail({
                       className="object-cover object-[center_25%] transition duration-500 group-hover:scale-[1.03]"
                     />
                   </Link>
-                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a44436]">
+                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
                     {related.category}
                   </p>
-                  <h3 className="mt-1.5 font-serif text-xl leading-snug text-[#39231e]">
+                  <h3 className="mt-1.5 font-serif text-xl leading-snug text-primary">
                     <Link
                       href={`/blog/${related.slug}`}
-                      className="transition hover:text-[#8d3428]"
+                      className="transition hover:text-accent"
                     >
                       {related.title}
                     </Link>
                   </h3>
-                  <p className="mt-2 text-xs text-[#77675d]">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     {formatBlogDate(related.publishedAt)} · {related.readTime}
                   </p>
                 </article>

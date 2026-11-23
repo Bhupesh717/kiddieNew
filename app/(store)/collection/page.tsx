@@ -6,39 +6,49 @@ import { Heart, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 import { PageIntro, SiteFooter, SiteHeader } from "@/components/site-shell";
 import { ProductCard } from "@/components/storefront/product-card";
 import { useCart } from "@/components/storefront/cart-provider";
-import {
-  categories,
-  products as catalogProducts,
-  type StoreProduct,
-} from "@/src/lib/store/catalog";
-
-const ADMIN_PRODUCTS_STORAGE_KEY = "majisavesh_admin_products_v1";
+import { type StoreProduct } from "@/src/lib/store/catalog";
+import { productApiService } from "@/src/lib/api/services/product-service";
 
 function CollectionCatalog() {
   const searchParams = useSearchParams();
   const { isWishlisted, wishlistCount } = useCart();
-  const [products, setProducts] = useState<StoreProduct[]>(catalogProducts);
+  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [categoryList, setCategoryList] = useState<
+    Array<{ name: string; slug: string }>
+  >([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(ADMIN_PRODUCTS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as unknown;
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProducts(parsed as StoreProduct[]);
+    productApiService
+      .list()
+      .then((live) => {
+        setProducts(Array.isArray(live) ? live : []);
+      })
+      .catch((err) => {
+        console.error("Failed to load collection products", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((payload) => {
+        if (payload?.success && Array.isArray(payload.data)) {
+          setCategoryList(payload.data);
         }
-      }
-    } catch {
-      // Ignore malformed storage
-    }
+      })
+      .catch(() => {});
   }, []);
 
   const initialQuery = searchParams.get("q") ?? "";
   const initialCategory = searchParams.get("category") ?? "all";
+  const initialSubCategory = searchParams.get("subcategory") ?? "all";
   const initialWishlist = searchParams.get("wishlist") === "1";
 
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState(initialCategory);
+  const [subCategory, setSubCategory] = useState(initialSubCategory);
   const [onlyWishlist, setOnlyWishlist] = useState(initialWishlist);
   const [minimum, setMinimum] = useState(0);
   const [maximum, setMaximum] = useState(30000);
@@ -48,6 +58,7 @@ function CollectionCatalog() {
   useEffect(() => {
     setQuery(searchParams.get("q") ?? "");
     setCategory(searchParams.get("category") ?? "all");
+    setSubCategory(searchParams.get("subcategory") ?? "all");
     setOnlyWishlist(searchParams.get("wishlist") === "1");
   }, [searchParams]);
 
@@ -55,11 +66,12 @@ function CollectionCatalog() {
     const normalizedQuery = query.trim().toLowerCase();
     const matching = products.filter((product) => {
       if (category !== "all" && product.categorySlug !== category) return false;
+      if (subCategory !== "all" && product.subCategorySlug !== subCategory) return false;
       if (onlyWishlist && !isWishlisted(product.id)) return false;
       if (product.price < minimum || product.price > maximum) return false;
       if (!normalizedQuery) return true;
       const haystack =
-        `${product.name} ${product.category} ${product.fabric} ${product.description} ${product.tag}`.toLowerCase();
+        `${product.name} ${product.category} ${product.subCategory} ${product.fabric} ${product.description} ${product.tag}`.toLowerCase();
       return haystack.includes(normalizedQuery);
     });
     if (sort === "price-low")
@@ -72,6 +84,7 @@ function CollectionCatalog() {
   }, [
     products,
     category,
+    subCategory,
     onlyWishlist,
     isWishlisted,
     minimum,
@@ -83,6 +96,7 @@ function CollectionCatalog() {
   function resetAll() {
     setQuery("");
     setCategory("all");
+    setSubCategory("all");
     setOnlyWishlist(false);
     setMinimum(0);
     setMaximum(30000);
@@ -95,17 +109,17 @@ function CollectionCatalog() {
         <button
           type="button"
           onClick={() => setMobileFiltersOpen((open) => !open)}
-          className="inline-flex items-center gap-2 border border-[#ded3c7] bg-white px-4 py-2.5 text-xs font-medium"
+          className="inline-flex items-center gap-2 border border-input bg-white px-4 py-2.5 text-xs font-medium"
         >
           <SlidersHorizontal size={14} />
           {mobileFiltersOpen ? "Hide filters" : "Filter & refine"}
         </button>
-        <span className="text-xs text-[#77675d]">{filtered.length} pieces</span>
+        <span className="text-xs text-muted-foreground">{filtered.length} pieces</span>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
         <aside
-          className={`${mobileFiltersOpen ? "block" : "hidden"} h-fit border border-[#e8ded2] bg-white p-5 lg:block`}
+          className={`${mobileFiltersOpen ? "block" : "hidden"} h-fit border border-border bg-white p-5 lg:block`}
         >
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-serif text-xl">
@@ -116,7 +130,7 @@ function CollectionCatalog() {
               onClick={resetAll}
               aria-label="Clear all filters"
               title="Reset filters"
-              className="text-[#8d3428] transition hover:opacity-75"
+              className="text-accent transition hover:opacity-75"
             >
               <RotateCcw size={15} />
             </button>
@@ -128,15 +142,15 @@ function CollectionCatalog() {
           >
             Search
           </label>
-          <div className="mt-2 flex items-center gap-2 border border-[#ded3c7] bg-[#fffdf9] px-3 py-2.5">
-            <Search size={14} className="shrink-0 text-[#8b796b]" />
+          <div className="mt-2 flex items-center gap-2 border border-input bg-popover px-3 py-2.5">
+            <Search size={14} className="shrink-0 text-muted-foreground" />
             <input
               id="collection-search"
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Silk, poshak, kundan..."
-              className="w-full bg-transparent text-sm text-[#33251f] outline-none"
+              placeholder="Shirts, polos, kurtis, dresses..."
+              className="w-full bg-transparent text-sm text-foreground outline-none"
             />
           </div>
 
@@ -150,22 +164,22 @@ function CollectionCatalog() {
             id="category-filter"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
-            className="mt-2 w-full border border-[#ded3c7] bg-[#fffdf9] px-3 py-3 text-sm"
+            className="mt-2 w-full border border-input bg-popover px-3 py-3 text-sm"
           >
             <option value="all">All categories</option>
-            {categories.map((item) => (
+            {categoryList.map((item) => (
               <option key={item.slug} value={item.slug}>
                 {item.name}
               </option>
             ))}
           </select>
 
-          <label className="mt-6 flex cursor-pointer items-center justify-between border border-[#e8ded2] bg-[#fbf8f3] px-3 py-2.5 text-xs">
+          <label className="mt-6 flex cursor-pointer items-center justify-between border border-border bg-background px-3 py-2.5 text-xs">
             <span className="flex items-center gap-2">
               <Heart
                 size={14}
-                fill={onlyWishlist ? "#a44436" : "none"}
-                color={onlyWishlist ? "#a44436" : "currentColor"}
+                fill={onlyWishlist ? "currentColor" : "none"}
+                color="currentColor"
               />
               Saved wishlist ({wishlistCount})
             </span>
@@ -173,7 +187,7 @@ function CollectionCatalog() {
               type="checkbox"
               checked={onlyWishlist}
               onChange={(event) => setOnlyWishlist(event.target.checked)}
-              className="accent-[#8d3428]"
+              className="accent-accent"
             />
           </label>
 
@@ -182,7 +196,7 @@ function CollectionCatalog() {
               Price range
             </p>
             <div className="mt-3 grid grid-cols-2 gap-3">
-              <label className="text-xs text-[#77675d]">
+              <label className="text-xs text-muted-foreground">
                 From
                 <input
                   type="number"
@@ -193,10 +207,10 @@ function CollectionCatalog() {
                     const next = Math.max(0, Number(event.target.value) || 0);
                     setMinimum(Math.min(next, maximum));
                   }}
-                  className="mt-1 w-full border border-[#ded3c7] bg-[#fffdf9] px-2 py-2 text-sm text-[#33251f]"
+                  className="mt-1 w-full border border-input bg-popover px-2 py-2 text-sm text-foreground"
                 />
               </label>
-              <label className="text-xs text-[#77675d]">
+              <label className="text-xs text-muted-foreground">
                 To
                 <input
                   type="number"
@@ -210,7 +224,7 @@ function CollectionCatalog() {
                     );
                     setMaximum(Math.min(50000, next));
                   }}
-                  className="mt-1 w-full border border-[#ded3c7] bg-[#fffdf9] px-2 py-2 text-sm text-[#33251f]"
+                  className="mt-1 w-full border border-input bg-popover px-2 py-2 text-sm text-foreground"
                 />
               </label>
             </div>
@@ -225,27 +239,27 @@ function CollectionCatalog() {
                 Math.max(maximum, Math.max(minimum, 1000)),
               )}
               onChange={(event) => setMaximum(Number(event.target.value))}
-              className="mt-4 w-full accent-[#8d3428]"
+              className="mt-4 w-full accent-accent"
             />
-            <p className="mt-1 text-xs text-[#77675d]">
+            <p className="mt-1 text-xs text-muted-foreground">
               Up to Rs. {maximum.toLocaleString("en-IN")}
             </p>
           </div>
         </aside>
 
         <div>
-          <div className="mb-5 flex items-center justify-between border-b border-[#e8ded2] pb-4">
-            <p className="text-xs text-[#77675d]">
+          <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
+            <p className="text-xs text-muted-foreground">
               Showing{" "}
-              <span className="font-semibold text-[#39231e]">
+              <span className="font-semibold text-primary">
                 {filtered.length}
               </span>{" "}
               {filtered.length === 1 ? "piece" : "pieces"}
             </p>
-            <label className="flex items-center gap-2 text-xs text-[#77675d]">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
               Sort
               <select
-                className="border-0 bg-transparent py-1 text-xs text-[#39231e]"
+                className="border-0 bg-transparent py-1 text-xs text-primary"
                 value={sort}
                 onChange={(event) => setSort(event.target.value)}
               >
@@ -263,18 +277,24 @@ function CollectionCatalog() {
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
+          ) : loading ? (
+            <div className="border border-dashed border-input bg-white px-6 py-16 text-center">
+              <p className="font-serif text-2xl">
+                Loading collection from atelier...
+              </p>
+            </div>
           ) : (
-            <div className="border border-dashed border-[#d8cabc] bg-white px-6 py-16 text-center">
+            <div className="border border-dashed border-input bg-white px-6 py-16 text-center">
               <p className="font-serif text-2xl">
                 No pieces match these filters
               </p>
-              <p className="mt-2 text-sm text-[#77675d]">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Try clearing your search query, category, or price range.
               </p>
               <button
                 type="button"
                 onClick={resetAll}
-                className="mt-5 border border-[#39231e] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#39231e]"
+                className="mt-5 border border-primary px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary"
               >
                 Reset filters
               </button>
@@ -288,29 +308,29 @@ function CollectionCatalog() {
 
 export default function CollectionPage() {
   return (
-    <main className="min-h-screen bg-[#fbf8f3] text-[#33251f]">
+    <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
-      {/* <section className="bg-[#f3ece2] py-14 sm:py-20">
+      {/* <section className="bg-secondary py-14 sm:py-20">
         <div className="container mx-auto px-5 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#a44436]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-accent">
             The complete edit
           </p>
-          <h1 className="mt-4 font-serif text-5xl text-[#39231e] sm:text-6xl">
+          <h1 className="mt-4 font-serif text-5xl text-primary sm:text-6xl">
             The collection
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#77675d]">
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
             Discover occasion dressing shaped by hand, history and the warm spirit of Rajasthan.
           </p>
         </div>
       </section> */}
       <PageIntro
-        eyebrow="The complete edit"
-        title=" The collection"
-        copy=" Discover occasion dressing shaped by hand, history and the warm spirit of Rajasthan."
+        eyebrow="Curated Catalog"
+        title="KiddieQuick Collection"
+        copy="Discover our signature range of smart apparel for Kids, Men, and Women, crafted with bio-washed, skin-friendly fabrics."
       />
       <Suspense
         fallback={
-          <div className="container mx-auto px-6 py-16 text-center text-sm text-[#77675d]">
+          <div className="container mx-auto px-6 py-16 text-center text-sm text-muted-foreground">
             Loading collection...
           </div>
         }

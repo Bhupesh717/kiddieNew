@@ -11,13 +11,17 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertCircle,
   CheckCircle2,
   Eye,
   EyeOff,
+  FolderTree,
   Layers,
+  Palette,
   Pencil,
   Plus,
   RotateCcw,
+  Ruler,
   Search,
   Sparkles,
   Tag,
@@ -33,7 +37,6 @@ import {
 import { blogApiService } from "@/src/lib/api/services/blog-service";
 import { masterApiService } from "@/src/lib/api/services/master-service";
 import {
-  AVAILABLE_CATEGORY_IMAGES,
   MASTER_META,
   MASTER_TYPES,
   slugifyMasterName,
@@ -45,6 +48,8 @@ import {
 type MasterDraft = {
   name: string;
   slug: string;
+  categorySlug?: string;
+  colorCode?: string;
   description: string;
   image: string;
   status: MasterStatus;
@@ -54,14 +59,19 @@ function createEmptyDraft(type: MasterType): MasterDraft {
   return {
     name: "",
     slug: "",
+    categorySlug: type === "size" ? "kids" : "",
+    colorCode: type === "color" ? "#800020" : "",
     description: "",
-    image: type === "category" ? AVAILABLE_CATEGORY_IMAGES[0].value : "",
+    image: "",
     status: "active",
   };
 }
 
 const MASTER_ICONS: Record<MasterType, typeof Layers> = {
   category: Layers,
+  subcategory: FolderTree,
+  color: Palette,
+  size: Ruler,
   fabric: Sparkles,
   tag: Tag,
 };
@@ -77,26 +87,62 @@ export function MasterManager({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const meta = MASTER_META[type];
 
-  const [items, setItems] = useState<MasterItem[]>(initialItems);
+  const [items, setItems] = useState<MasterItem[]>(initialItems ?? []);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | MasterStatus>("all");
   const [dialog, setDialog] = useState<"add" | "edit" | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [slugLocked, setSlugLocked] = useState(false);
   const [draft, setDraft] = useState<MasterDraft>(() => createEmptyDraft(type));
+  const [parentCategories, setParentCategories] = useState<MasterItem[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string>("");
   const [feedback, setFeedback] = useState<{
     type: "error" | "success";
     text: string;
   } | null>(null);
 
+  const loadLiveItems = () => {
+    setLoading(true);
+    masterApiService
+      .list(type, "all", true)
+      .then((live) => {
+        if (!Array.isArray(live)) {
+          setItems([]);
+          return;
+        }
+        const seen = new Set<string>();
+        const unique = live.filter((item) => {
+          if (seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
+        setItems(unique);
+      })
+      .catch((err) => {
+        console.error("Failed to load admin master items", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
   useEffect(() => {
-    setItems(initialItems);
-  }, [initialItems]);
+    loadLiveItems();
+    if (type === "subcategory") {
+      masterApiService
+        .list("category", "all", true)
+        .then((cats) => {
+          if (Array.isArray(cats)) setParentCategories(cats);
+        })
+        .catch(() => {});
+    }
+  }, [type]);
 
   useEffect(() => {
     if (!dialog) return;
@@ -128,6 +174,7 @@ export function MasterManager({
 
   function startAdd() {
     setFeedback(null);
+    setModalError("");
     setActiveId(null);
     setSlugLocked(false);
     setDraft(createEmptyDraft(type));
@@ -136,13 +183,16 @@ export function MasterManager({
 
   function startEdit(item: MasterItem) {
     setFeedback(null);
+    setModalError("");
     setActiveId(item.id);
     setSlugLocked(true);
     setDraft({
       name: item.name,
       slug: item.slug,
+      categorySlug: item.categorySlug ?? "",
+      colorCode: item.colorCode || item.color_code || "#800020",
       description: item.description,
-      image: item.image ?? AVAILABLE_CATEGORY_IMAGES[0].value,
+      image: item.image ?? "",
       status: item.status,
     });
     setDialog("edit");
@@ -159,16 +209,87 @@ export function MasterManager({
   async function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    setModalError("");
+
+    // Validate file type
+    const validMimes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "image/avif",
+    ];
+    if (
+      !validMimes.includes(file.type.toLowerCase()) &&
+      !/\.(png|jpe?g|webp|avif)$/i.test(file.name)
+    ) {
+      setModalError(
+        "Invalid file type. Only PNG, JPG, WEBP, and AVIF images are supported.",
+      );
+      event.target.value = "";
+      return;
+    }
+
+    // Validate file size (max 5 MB)
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
+      setModalError(
+        `Selected image is ${sizeInMb} MB. Maximum allowed upload size is 5 MB.`,
+      );
+      event.target.value = "";
+      return;
+    }
+
+    // Validate image dimensions and aspect ratio (Category requires 4:5 Portrait)
+    try {
+      const dimensions = await new Promise<{ width: number; height: number }>(
+        (resolve, reject) => {
+          const img = new window.Image();
+          const objectUrl = URL.createObjectURL(file);
+          img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("Could not decode image to inspect dimensions."));
+          };
+          img.src = objectUrl;
+        },
+      );
+
+      if (type === "category" && dimensions.height > 0) {
+        const ratio = dimensions.width / dimensions.height;
+        // 4:5 ratio is 0.80. Reject if ratio > 0.90 (landscape or square) or < 0.65
+        if (ratio > 0.90 || ratio < 0.65) {
+          const orientation =
+            ratio > 1.35
+              ? "16:9 Landscape"
+              : ratio > 1.0
+              ? "Landscape"
+              : "Square/Narrow";
+          setModalError(
+            `Invalid aspect ratio! Category cover image must be in 4:5 portrait ratio (recommended: 800×1000px). Selected image is ${dimensions.width}×${dimensions.height} (${orientation}, ratio ${ratio.toFixed(2)}:1). Please select a vertical 4:5 image.`,
+          );
+          event.target.value = "";
+          return;
+        }
+      }
+    } catch {
+      // If browser fails decoding, let backend validator handle it
+    }
+
     setUploadingImage(true);
     setFeedback(null);
     try {
-      const url = await blogApiService.uploadImage(file);
+      const url = await masterApiService.uploadImage(type, file);
       setDraft((prev) => ({ ...prev, image: url }));
     } catch (error) {
-      setFeedback({
-        type: "error",
-        text: error instanceof Error ? error.message : "Image upload failed",
-      });
+      setModalError(
+        error instanceof Error ? error.message : "Image upload failed",
+      );
     } finally {
       setUploadingImage(false);
       event.target.value = "";
@@ -179,10 +300,96 @@ export function MasterManager({
     event.preventDefault();
     setSubmitting(true);
     setFeedback(null);
+    setModalError("");
+
+    const targetName = draft.name.trim();
+    const targetSlug = (
+      draft.slug.trim() || slugifyMasterName(draft.name)
+    ).toLowerCase();
+
+    // Required and length validation for name
+    if (!targetName) {
+      setModalError(`${meta.label} name is required.`);
+      setSubmitting(false);
+      return;
+    }
+    if (targetName.length < 2) {
+      setModalError(`${meta.label} name must be at least 2 characters.`);
+      setSubmitting(false);
+      return;
+    }
+    if (targetName.length > 100) {
+      setModalError(`${meta.label} name cannot exceed 100 characters.`);
+      setSubmitting(false);
+      return;
+    }
+
+    // Slug format validation
+    if (!targetSlug) {
+      setModalError("Slug is required.");
+      setSubmitting(false);
+      return;
+    }
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(targetSlug)) {
+      setModalError(
+        "Slug must contain only lowercase letters, numbers, and hyphens (e.g. boys-wear).",
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    // Category-specific cover image validation
+    if (type === "category" && !draft.image.trim()) {
+      setModalError(
+        "Category cover image is required for the storefront category slider. Please upload or provide an image (4:5 ratio recommended).",
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    // Description length validation
+    if (draft.description.trim().length > 500) {
+      setModalError("Description cannot exceed 500 characters.");
+      setSubmitting(false);
+      return;
+    }
+
+    // Client-side Unique Name validation
+    const duplicateName = items.find(
+      (item) =>
+        item.id !== activeId &&
+        item.name.trim().toLowerCase() === targetName.toLowerCase(),
+    );
+    if (duplicateName) {
+      setModalError(
+        `A ${meta.label.toLowerCase()} with the name "${targetName}" already exists. Please choose a unique name.`,
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    // Client-side Unique Slug validation
+    const duplicateSlug = items.find(
+      (item) =>
+        item.id !== activeId &&
+        item.slug.trim().toLowerCase() === targetSlug,
+    );
+    if (duplicateSlug) {
+      setModalError(
+        `A ${meta.label.toLowerCase()} with the slug "${targetSlug}" already exists. Please choose a unique slug.`,
+      );
+      setSubmitting(false);
+      return;
+    }
 
     const payload = {
-      name: draft.name.trim(),
-      slug: (draft.slug.trim() || slugifyMasterName(draft.name)).toLowerCase(),
+      name: targetName,
+      slug: targetSlug,
+      categorySlug:
+        type === "subcategory" || type === "size"
+          ? draft.categorySlug
+          : undefined,
+      colorCode: type === "color" ? draft.colorCode : undefined,
       description: draft.description.trim(),
       ...(meta.supportsImage ? { image: draft.image.trim() } : {}),
       status: draft.status,
@@ -209,12 +416,14 @@ export function MasterManager({
       setDialog(null);
       router.refresh();
     } catch (error) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : `Could not save ${meta.label.toLowerCase()}`;
+      setModalError(msg);
       setFeedback({
         type: "error",
-        text:
-          error instanceof Error
-            ? error.message
-            : `Could not save ${meta.label.toLowerCase()}`,
+        text: msg,
       });
     } finally {
       setSubmitting(false);
@@ -273,35 +482,22 @@ export function MasterManager({
 
   async function handleReset() {
     setFeedback(null);
-    try {
-      const defaults = await masterApiService.reset(type);
-      setItems(defaults);
-      setFeedback({
-        type: "success",
-        text: `Default ${meta.plural.toLowerCase()} restored.`,
-      });
-      router.refresh();
-    } catch (error) {
-      setFeedback({
-        type: "error",
-        text: error instanceof Error ? error.message : "Reset failed",
-      });
-    }
+    loadLiveItems();
   }
 
   return (
     <section className="container mx-auto px-4 py-7 sm:px-6 lg:py-10">
       <nav
         aria-label="Master subfolders"
-        className="mb-6 flex flex-wrap items-center gap-2 border-b border-[#e8ded2] pb-4"
+        className="mb-6 flex flex-wrap items-center gap-2 border-b border-border pb-4"
       >
         <Link
           href="/admin/master"
-          className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#77675d] hover:text-[#39231e]"
+          className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground hover:text-primary"
         >
           Master
         </Link>
-        <span className="text-[#c8b8a8]">/</span>
+        <span className="text-muted-foreground/60">/</span>
         {MASTER_TYPES.map((masterType) => {
           const Icon = MASTER_ICONS[masterType];
           const isCurrent = masterType === type;
@@ -311,8 +507,8 @@ export function MasterManager({
               href={`/admin/master/${masterType}`}
               className={`inline-flex items-center gap-1.5 border px-3.5 py-2 text-xs font-medium transition ${
                 isCurrent
-                  ? "border-[#8d3428] bg-[#f7eee9] text-[#8d3428]"
-                  : "border-[#dfd8cf] bg-white text-[#5f5750] hover:border-[#39231e]"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border bg-white text-muted-foreground hover:border-primary"
               }`}
             >
               <Icon size={13} />
@@ -322,15 +518,15 @@ export function MasterManager({
         })}
       </nav>
 
-      <div className="flex flex-col justify-between gap-5 border-b border-[#dfd8cf] pb-7 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-5 border-b border-border pb-7 sm:flex-row sm:items-end">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a44436]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
             Master · {meta.label} management
           </p>
-          <h1 className="mt-2 font-serif text-4xl text-[#39231e]">
+          <h1 className="mt-2 font-serif text-4xl text-primary">
             {meta.plural}
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-[#77675d]">
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
             {meta.description}
           </p>
         </div>
@@ -339,14 +535,14 @@ export function MasterManager({
           <button
             type="button"
             onClick={handleReset}
-            className="inline-flex items-center justify-center gap-2 border border-[#dfd8cf] bg-white px-3 py-3 text-xs text-[#77675d] transition hover:border-[#8d3428]"
+            className="inline-flex items-center justify-center gap-2 border border-border bg-white px-3 py-3 text-xs text-muted-foreground transition hover:border-accent"
           >
-            <RotateCcw size={14} /> Reset defaults
+            <RotateCcw size={14} /> Refresh
           </button>
           <button
             type="button"
             onClick={startAdd}
-            className="inline-flex items-center justify-center gap-2 bg-[#8d3428] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#70281f]"
+            className="inline-flex items-center justify-center gap-2 bg-accent px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-accent/90"
           >
             <Plus size={15} /> Add {meta.label}
           </button>
@@ -358,8 +554,8 @@ export function MasterManager({
           role="status"
           className={`mt-5 flex items-center justify-between border px-4 py-3 text-xs ${
             feedback.type === "error"
-              ? "border-[#e6c3bd] bg-[#fdf2f0] text-[#8d3428]"
-              : "border-[#c4dfd1] bg-[#eef7f2] text-[#168252]"
+              ? "border-accent/30 bg-accent/10 text-accent"
+              : "border-success/30 bg-success/10 text-success"
           }`}
         >
           <span className="flex items-center gap-2 font-medium">
@@ -377,8 +573,8 @@ export function MasterManager({
         </div>
       )}
 
-      <div className="mt-7 overflow-hidden border border-[#dfd8cf] bg-white">
-        <div className="flex flex-col gap-3 border-b border-[#eee8e0] p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-7 overflow-hidden border border-border bg-white">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {(
               [
@@ -398,8 +594,8 @@ export function MasterManager({
                   }}
                   className={`px-3 py-1.5 text-xs font-medium transition ${
                     selected
-                      ? "bg-[#39231e] text-white"
-                      : "border border-[#dfd8cf] bg-[#faf7f3] text-[#5f5750] hover:border-[#39231e]"
+                      ? "bg-primary text-white"
+                      : "border border-border bg-background text-muted-foreground hover:border-primary"
                   }`}
                 >
                   {label}
@@ -408,7 +604,7 @@ export function MasterManager({
             })}
           </div>
 
-          <label className="flex items-center gap-2 border border-[#dfd8cf] px-3 py-2 text-sm text-[#a49a90]">
+          <label className="flex items-center gap-2 border border-border px-3 py-2 text-sm text-muted-foreground">
             <Search size={15} />
             <span className="sr-only">Search {meta.plural}</span>
             <input
@@ -419,14 +615,14 @@ export function MasterManager({
                 pagination.setPage(1);
               }}
               placeholder={`Search ${meta.plural.toLowerCase()}...`}
-              className="w-full bg-transparent text-sm text-[#39231e] outline-none sm:w-56"
+              className="w-full bg-transparent text-sm text-primary outline-none sm:w-56"
             />
           </label>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-left text-sm">
-            <thead className="bg-[#faf7f3] text-[10px] uppercase tracking-[0.12em] text-[#a48668]">
+            <thead className="bg-background text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-4 font-semibold sm:px-5">
                   {meta.label} Name
@@ -444,13 +640,13 @@ export function MasterManager({
 
                 return (
                   <tr
-                    key={item.id}
-                    className="border-t border-[#eee8e0] text-[#5f5750]"
+                    key={`${item.id}-${item.slug}`}
+                    className="border-t border-border text-muted-foreground"
                   >
                     <td className="px-4 py-3.5 sm:px-5">
                       <div className="flex items-center gap-3">
                         {meta.supportsImage && item.image && (
-                          <div className="relative size-11 shrink-0 overflow-hidden border border-[#e8ded2] bg-[#f2e9df]">
+                          <div className="relative size-11 shrink-0 overflow-hidden border border-border bg-secondary">
                             <BlogCoverImage
                               src={item.image}
                               alt={item.name}
@@ -459,15 +655,43 @@ export function MasterManager({
                             />
                           </div>
                         )}
-                        <span className="font-medium text-[#39231e]">
-                          {item.name}
-                        </span>
+                        {type === "color" && (
+                          <span
+                            className="size-5 shrink-0 rounded-full border border-border shadow-xs"
+                            style={{
+                              backgroundColor:
+                                item.colorCode || item.color_code || "#ccc",
+                            }}
+                            title={item.colorCode || item.color_code || ""}
+                          />
+                        )}
+                        <div className="flex flex-col">
+                          <span className="font-medium text-primary">
+                            {item.name}
+                          </span>
+                          {type === "color" &&
+                            (item.colorCode || item.color_code) && (
+                              <span className="font-mono text-[10px] text-muted-foreground">
+                                {item.colorCode || item.color_code}
+                              </span>
+                            )}
+                          {type === "size" && item.categorySlug && (
+                            <span className="text-[10px] font-medium uppercase tracking-wider text-accent">
+                              Group: {item.categorySlug}
+                            </span>
+                          )}
+                          {type === "subcategory" && item.categorySlug && (
+                            <span className="text-[10px] font-medium uppercase tracking-wider text-accent">
+                              Category: {item.categorySlug.replace(/-/g, " ")}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-[#77675d] sm:px-5">
+                    <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground sm:px-5">
                       {item.slug}
                     </td>
-                    <td className="max-w-xs truncate px-4 py-3.5 text-xs text-[#77675d] sm:px-5">
+                    <td className="max-w-xs truncate px-4 py-3.5 text-xs text-muted-foreground sm:px-5">
                       {item.description || "—"}
                     </td>
                     <td className="px-4 py-3.5 sm:px-5">
@@ -478,8 +702,8 @@ export function MasterManager({
                         title={`Click to mark as ${isActive ? "Inactive" : "Active"}`}
                         className={`inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] transition disabled:opacity-50 ${
                           isActive
-                            ? "bg-[#e8f4ec] text-[#168252] hover:bg-[#d7ecd9]"
-                            : "bg-[#f2efeb] text-[#77675d] hover:bg-[#e5dfd7]"
+                            ? "bg-success/10 text-success hover:bg-success/20"
+                            : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
                         }`}
                       >
                         {isActive ? <Eye size={12} /> : <EyeOff size={12} />}
@@ -492,7 +716,7 @@ export function MasterManager({
                           type="button"
                           onClick={() => startEdit(item)}
                           aria-label={`Edit ${item.name}`}
-                          className="border border-[#e4dbd1] p-2 hover:border-[#8d3428]"
+                          className="border border-border p-2 hover:border-accent"
                         >
                           <Pencil size={15} />
                         </button>
@@ -502,14 +726,14 @@ export function MasterManager({
                               type="button"
                               disabled={isBusy}
                               onClick={() => handleDelete(item.id)}
-                              className="bg-[#a44436] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+                              className="bg-accent px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white"
                             >
                               Delete
                             </button>
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteId(null)}
-                              className="border border-[#e4dbd1] px-2 py-1.5 text-[10px]"
+                              className="border border-border px-2 py-1.5 text-[10px]"
                             >
                               Cancel
                             </button>
@@ -519,7 +743,7 @@ export function MasterManager({
                             type="button"
                             onClick={() => setConfirmDeleteId(item.id)}
                             aria-label={`Delete ${item.name}`}
-                            className="border border-[#e4dbd1] p-2 text-[#a44436] hover:border-[#a44436]"
+                            className="border border-border p-2 text-accent hover:border-accent"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -533,9 +757,16 @@ export function MasterManager({
           </table>
         </div>
 
-        {!visibleItems.length && (
-          <p className="p-8 text-center text-sm text-[#77675d]">
-            No {meta.plural.toLowerCase()} match your search or status filter.
+        {loading && (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            Loading {meta.plural.toLowerCase()}...
+          </p>
+        )}
+        {!loading && !visibleItems.length && (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            {search
+              ? `No ${meta.plural.toLowerCase()} match your search.`
+              : `No ${meta.plural.toLowerCase()} created yet. Click "Add ${meta.label}" to add one.`}
           </p>
         )}
         <TablePagination
@@ -554,7 +785,7 @@ export function MasterManager({
       {dialog && (
         <div
           role="presentation"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#201915]/55 sm:items-center sm:p-5"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setDialog(null);
           }}
@@ -563,16 +794,16 @@ export function MasterManager({
             role="dialog"
             aria-modal="true"
             aria-labelledby="master-dialog-title"
-            className="max-h-[92vh] w-full overflow-y-auto bg-[#fffdf9] p-5 sm:max-w-lg sm:p-7"
+            className="max-h-[92vh] w-full overflow-y-auto bg-popover p-5 sm:max-w-lg sm:p-7"
           >
-            <div className="flex items-start justify-between gap-3 border-b border-[#e8ded2] pb-4">
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#a44436]">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-accent">
                   Master · {meta.label}
                 </p>
                 <h2
                   id="master-dialog-title"
-                  className="mt-1 font-serif text-2xl text-[#39231e]"
+                  className="mt-1 font-serif text-2xl text-primary"
                 >
                   {dialog === "add"
                     ? `Add ${meta.label}`
@@ -583,14 +814,31 @@ export function MasterManager({
                 type="button"
                 onClick={() => setDialog(null)}
                 aria-label="Close dialog"
-                className="p-2 text-[#77675d] hover:text-[#39231e]"
+                className="p-2 text-muted-foreground hover:text-primary"
               >
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              <label className="block text-xs font-medium text-[#4b3c33]">
+              {modalError && (
+                <div className="flex items-start gap-2.5 rounded-sm border border-red-200 bg-red-50 p-3 text-xs text-red-800 animate-in fade-in">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-red-900">Validation Error</p>
+                    <p className="mt-0.5 text-red-700 leading-relaxed">{modalError}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModalError("")}
+                    className="text-red-400 hover:text-red-700"
+                    aria-label="Close error"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              <label className="block text-xs font-medium text-foreground/90">
                 {meta.label} Name *
                 <input
                   type="text"
@@ -598,13 +846,119 @@ export function MasterManager({
                   value={draft.name}
                   onChange={(event) => handleNameChange(event.target.value)}
                   placeholder={meta.placeholderName}
-                  className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm text-[#33251f] outline-none focus:border-[#8d3428]"
+                  className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent"
                 />
               </label>
 
-              <label className="block text-xs font-medium text-[#4b3c33]">
+              {(type === "color" || meta.supportsColorCode) && (
+                <div className="space-y-2 rounded-xs border border-accent/20 bg-accent/5 p-3.5">
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="color-picker-box"
+                      className="block text-xs font-semibold text-primary flex items-center gap-1.5"
+                    >
+                      <Palette size={14} className="text-accent" />
+                      Visual Color Box (Color Picker) &amp; Hex Code *
+                    </label>
+                    <span
+                      className="size-4 rounded-full border border-black/20 shadow-xs"
+                      style={{ backgroundColor: draft.colorCode || "#800020" }}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="color-picker-box"
+                        type="color"
+                        value={draft.colorCode || "#800020"}
+                        onChange={(event) =>
+                          setDraft((prev) => ({
+                            ...prev,
+                            colorCode: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-14 cursor-pointer rounded-xs border-2 border-border bg-white p-1 shadow-sm transition hover:scale-105"
+                      />
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        Click box to pick
+                      </span>
+                    </div>
+
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        required
+                        value={draft.colorCode || ""}
+                        onChange={(event) =>
+                          setDraft((prev) => ({
+                            ...prev,
+                            colorCode: event.target.value,
+                          }))
+                        }
+                        placeholder="#800020"
+                        className="w-full border border-input bg-white px-3 py-2.5 text-sm font-mono text-foreground outline-none focus:border-accent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {type === "size" && (
+                <label className="block text-xs font-medium text-foreground/90">
+                  <span>Size Group / Category</span>
+                  <select
+                    value={draft.categorySlug || "kids"}
+                    onChange={(event) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        categorySlug: event.target.value,
+                      }))
+                    }
+                    className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-xs text-foreground outline-none focus:border-accent"
+                  >
+                    <option value="kids">
+                      Kids Wear (e.g. 0-6M, 2-3Y, 4-5Y...)
+                    </option>
+                    <option value="apparel">
+                      Men &amp; Women Apparel (e.g. XS, S, M, L, XL, XXL...)
+                    </option>
+                    <option value="bottoms">
+                      Bottoms &amp; Waists (e.g. 28, 30, 32, 34, 36...)
+                    </option>
+                    <option value="accessories">Accessories / Free Size</option>
+                  </select>
+                </label>
+              )}
+
+              {type === "subcategory" && (
+                <label className="block text-xs font-medium text-foreground/90">
+                  <span>Parent Category</span>
+                  <select
+                    value={draft.categorySlug || ""}
+                    onChange={(event) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        categorySlug: event.target.value,
+                      }))
+                    }
+                    className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-xs text-foreground outline-none focus:border-accent"
+                  >
+                    <option value="">
+                      Select Parent Category (e.g. Kids Wear, Men, Women)
+                    </option>
+                    {parentCategories.map((cat) => (
+                      <option key={cat.slug} value={cat.slug}>
+                        {cat.name} ({cat.slug})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              <label className="block text-xs font-medium text-foreground/90">
                 Slug *
-                <div className="mt-1.5 flex items-center border border-[#ded3c7] bg-white">
+                <div className="mt-1.5 flex items-center border border-input bg-white">
                   <input
                     type="text"
                     required
@@ -618,7 +972,7 @@ export function MasterManager({
                           .replace(/\s+/g, "-"),
                       }));
                     }}
-                    className="w-full px-3 py-2.5 font-mono text-xs text-[#33251f] outline-none"
+                    className="w-full px-3 py-2.5 font-mono text-xs text-foreground outline-none"
                   />
                   <button
                     type="button"
@@ -630,16 +984,16 @@ export function MasterManager({
                         slug: slugifyMasterName(prev.name),
                       }));
                     }}
-                    className="px-3 text-[#8d3428] hover:opacity-75"
+                    className="px-3 text-accent hover:opacity-75"
                   >
                     <Sparkles size={14} />
                   </button>
                 </div>
               </label>
 
-              <div className="text-xs font-medium text-[#4b3c33]">
+              <div className="text-xs font-medium text-foreground/90">
                 <span>Status *</span>
-                <div className="mt-1.5 grid grid-cols-2 border border-[#ded3c7] bg-white p-1">
+                <div className="mt-1.5 grid grid-cols-2 border border-input bg-white p-1">
                   {(["active", "inactive"] as const).map((statusOption) => {
                     const selected = draft.status === statusOption;
                     return (
@@ -655,9 +1009,9 @@ export function MasterManager({
                         className={`py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition ${
                           selected
                             ? statusOption === "active"
-                              ? "bg-[#168252] text-white"
-                              : "bg-[#77675d] text-white"
-                            : "text-[#77675d] hover:text-[#39231e]"
+                              ? "bg-success text-white"
+                              : "bg-muted-foreground text-white"
+                            : "text-muted-foreground hover:text-primary"
                         }`}
                       >
                         {statusOption}
@@ -668,11 +1022,16 @@ export function MasterManager({
               </div>
 
               {meta.supportsImage && (
-                <div className="border border-[#e4dbd1] bg-[#faf7f3] p-3.5">
+                <div className="border border-border bg-background p-3.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-[#4b3c33]">
-                      Category Cover Image
-                    </span>
+                    <div>
+                      <span className="text-xs font-medium text-foreground/90">
+                        Category Cover Image {type === "category" ? "*" : ""}
+                      </span>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Recommended ratio: 4:5 (e.g. 800×1000px) · Max 5 MB
+                      </p>
+                    </div>
                     <div>
                       <input
                         ref={imageInputRef}
@@ -685,15 +1044,15 @@ export function MasterManager({
                         type="button"
                         disabled={uploadingImage}
                         onClick={() => imageInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 border border-[#39231e] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[#39231e] transition hover:bg-[#39231e] hover:text-white disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 border border-primary bg-white px-2.5 py-1.5 text-[11px] font-medium text-primary transition hover:bg-primary hover:text-white disabled:opacity-50"
                       >
                         <Upload size={12} />
-                        {uploadingImage ? "Uploading..." : "Upload"}
+                        {uploadingImage ? "Uploading..." : "Upload image"}
                       </button>
                     </div>
                   </div>
                   <div className="mt-3 flex items-center gap-3">
-                    <div className="relative size-14 shrink-0 overflow-hidden border border-[#ded3c7] bg-[#eee4d8]">
+                    <div className="relative size-14 shrink-0 overflow-hidden border border-input bg-secondary">
                       <BlogCoverImage
                         src={draft.image}
                         alt={draft.name || "Category image"}
@@ -710,32 +1069,14 @@ export function MasterManager({
                           image: event.target.value,
                         }))
                       }
-                      placeholder="/products/teal-poshak.png"
-                      className="w-full border border-[#ded3c7] bg-white px-3 py-2 text-xs text-[#33251f] outline-none"
+                      placeholder="Paste image URL or click Upload"
+                      className="w-full border border-input bg-white px-3 py-2 text-xs text-foreground outline-none focus:border-accent"
                     />
-                  </div>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {AVAILABLE_CATEGORY_IMAGES.map((preset) => (
-                      <button
-                        key={preset.value}
-                        type="button"
-                        onClick={() =>
-                          setDraft((prev) => ({ ...prev, image: preset.value }))
-                        }
-                        className={`border px-2 py-1 text-[10px] transition ${
-                          draft.image === preset.value
-                            ? "border-[#8d3428] bg-[#f7eee9] font-medium text-[#8d3428]"
-                            : "border-[#ded3c7] bg-white text-[#5f5750]"
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
                   </div>
                 </div>
               )}
 
-              <label className="block text-xs font-medium text-[#4b3c33]">
+              <label className="block text-xs font-medium text-foreground/90">
                 Description / Notes
                 <textarea
                   rows={3}
@@ -747,22 +1088,22 @@ export function MasterManager({
                     }))
                   }
                   placeholder={meta.placeholderDesc}
-                  className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm text-[#33251f] outline-none focus:border-[#8d3428]"
+                  className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent"
                 />
               </label>
 
-              <div className="flex justify-end gap-3 border-t border-[#e8ded2] pt-4">
+              <div className="flex justify-end gap-3 border-t border-border pt-4">
                 <button
                   type="button"
                   onClick={() => setDialog(null)}
-                  className="border border-[#ded3c7] bg-white px-4 py-2.5 text-xs font-medium text-[#5f5750]"
+                  className="border border-input bg-white px-4 py-2.5 text-xs font-medium text-muted-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-[#8d3428] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-[#70281f] disabled:opacity-50"
+                  className="bg-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-accent/90 disabled:opacity-50"
                 >
                   {submitting
                     ? "Saving..."

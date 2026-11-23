@@ -68,7 +68,7 @@ function createEmptyDraft(): BlogDraft {
     readTime: "",
     coverImage: AVAILABLE_BLOG_IMAGES[0].value,
     coverImageAlt: "",
-    contentHtml: "<p>Write your story from the Majisavesh atelier here...</p>",
+    contentHtml: "<p>Write your story here...</p>",
     status: "active",
   };
 }
@@ -77,7 +77,8 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
   const router = useRouter();
   const coverUploadRef = useRef<HTMLInputElement>(null);
 
-  const [posts, setPosts] = useState<BlogPost[]>(initialPosts);
+  const [posts, setPosts] = useState<BlogPost[]>(initialPosts ?? []);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | BlogPostStatus>(
     "all",
@@ -97,17 +98,24 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
     text: string;
   } | null>(null);
 
-  useEffect(() => {
-    setPosts(initialPosts);
-  }, [initialPosts]);
+  const loadLiveBlogs = () => {
+    setLoading(true);
+    blogApiService
+      .list("all", true)
+      .then((live) => {
+        setPosts(Array.isArray(live) ? live : []);
+      })
+      .catch((err) => {
+        console.error("Failed to load admin blogs", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(BLOG_STORAGE_KEY, JSON.stringify(posts));
-    } catch {
-      // Ignore storage quota errors
-    }
-  }, [posts]);
+    loadLiveBlogs();
+  }, []);
 
   useEffect(() => {
     if (!dialog) return;
@@ -312,33 +320,20 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
 
   async function handleReset() {
     setFeedback(null);
-    try {
-      const defaults = await blogApiService.reset();
-      setPosts(defaults);
-      setFeedback({
-        type: "success",
-        text: "Default journal stories restored.",
-      });
-      router.refresh();
-    } catch (error) {
-      setFeedback({
-        type: "error",
-        text: error instanceof Error ? error.message : "Reset failed",
-      });
-    }
+    loadLiveBlogs();
   }
 
   return (
     <section className="container mx-auto px-4 py-7 sm:px-6 lg:py-10">
-      <div className="flex flex-col justify-between gap-5 border-b border-[#dfd8cf] pb-7 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-5 border-b border-border pb-7 sm:flex-row sm:items-end">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a44436]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
             Editorial · Journal management
           </p>
-          <h1 className="mt-2 font-serif text-4xl text-[#39231e]">
+          <h1 className="mt-2 font-serif text-4xl text-primary">
             Blog posts
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-[#77675d]">
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
             Create and edit rich-text journal stories, upload separate main
             cover and detail images, and toggle active visibility on the
             storefront.
@@ -349,21 +344,21 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
           <Link
             href="/blog"
             target="_blank"
-            className="inline-flex items-center justify-center gap-2 border border-[#dfd8cf] bg-white px-3.5 py-3 text-xs font-medium text-[#39231e] transition hover:border-[#39231e]"
+            className="inline-flex items-center justify-center gap-2 border border-border bg-white px-3.5 py-3 text-xs font-medium text-primary transition hover:border-primary"
           >
             <ExternalLink size={14} /> View storefront blog
           </Link>
           <button
             type="button"
             onClick={handleReset}
-            className="inline-flex items-center justify-center gap-2 border border-[#dfd8cf] bg-white px-3 py-3 text-xs text-[#77675d] transition hover:border-[#8d3428]"
+            className="inline-flex items-center justify-center gap-2 border border-border bg-white px-3 py-3 text-xs text-muted-foreground transition hover:border-accent"
           >
-            <RotateCcw size={14} /> Reset stories
+            <RotateCcw size={14} /> Refresh
           </button>
           <button
             type="button"
             onClick={startAdd}
-            className="inline-flex items-center justify-center gap-2 bg-[#8d3428] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#70281f]"
+            className="inline-flex items-center justify-center gap-2 bg-accent px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-accent/90"
           >
             <Plus size={15} /> Add blog post
           </button>
@@ -375,8 +370,8 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
           role="status"
           className={`mt-5 flex items-center justify-between border px-4 py-3 text-xs ${
             feedback.type === "error"
-              ? "border-[#e6c3bd] bg-[#fdf2f0] text-[#8d3428]"
-              : "border-[#c4dfd1] bg-[#eef7f2] text-[#168252]"
+              ? "border-accent/30 bg-accent/10 text-accent"
+              : "border-success/30 bg-success/10 text-success"
           }`}
         >
           <span className="flex items-center gap-2 font-medium">
@@ -394,8 +389,8 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
         </div>
       )}
 
-      <div className="mt-7 overflow-hidden border border-[#dfd8cf] bg-white">
-        <div className="flex flex-col gap-3 border-b border-[#eee8e0] p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-7 overflow-hidden border border-border bg-white">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {(
               [
@@ -415,8 +410,8 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                   }}
                   className={`px-3 py-1.5 text-xs font-medium transition ${
                     selected
-                      ? "bg-[#39231e] text-white"
-                      : "border border-[#dfd8cf] bg-[#faf7f3] text-[#5f5750] hover:border-[#39231e]"
+                      ? "bg-primary text-white"
+                      : "border border-border bg-background text-muted-foreground hover:border-primary"
                   }`}
                 >
                   {label}
@@ -425,7 +420,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
             })}
           </div>
 
-          <label className="flex items-center gap-2 border border-[#dfd8cf] px-3 py-2 text-sm text-[#a49a90]">
+          <label className="flex items-center gap-2 border border-border px-3 py-2 text-sm text-muted-foreground">
             <Search size={15} />
             <span className="sr-only">Search blog posts</span>
             <input
@@ -436,14 +431,14 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                 pagination.setPage(1);
               }}
               placeholder="Search title, slug, author..."
-              className="w-full bg-transparent text-sm text-[#39231e] outline-none sm:w-60"
+              className="w-full bg-transparent text-sm text-primary outline-none sm:w-60"
             />
           </label>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[780px] text-left text-sm">
-            <thead className="bg-[#faf7f3] text-[10px] uppercase tracking-[0.12em] text-[#a48668]">
+            <thead className="bg-background text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               <tr>
                 {[
                   "Story & Slug",
@@ -466,11 +461,11 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                 return (
                   <tr
                     key={post.id}
-                    className="border-t border-[#eee8e0] text-[#5f5750]"
+                    className="border-t border-border text-muted-foreground"
                   >
                     <td className="px-4 py-3.5 sm:px-5">
                       <div className="flex items-center gap-3">
-                        <div className="relative h-14 w-16 shrink-0 overflow-hidden border border-[#e8ded2] bg-[#f2e9df]">
+                        <div className="relative h-14 w-16 shrink-0 overflow-hidden border border-border bg-secondary">
                           <BlogCoverImage
                             src={post.coverImage}
                             alt={post.coverImageAlt || post.title}
@@ -479,10 +474,10 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                           />
                         </div>
                         <div className="min-w-0">
-                          <p className="max-w-md truncate font-medium text-[#39231e]">
+                          <p className="max-w-md truncate font-medium text-primary">
                             {post.title}
                           </p>
-                          <p className="mt-0.5 truncate font-mono text-[11px] text-[#9b8d80]">
+                          <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
                             /blog/{post.slug}
                           </p>
                         </div>
@@ -490,10 +485,10 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                     </td>
                     <td className="px-4 py-3.5 sm:px-5">{post.category}</td>
                     <td className="px-4 py-3.5 sm:px-5">
-                      <p className="text-xs font-medium text-[#39231e]">
+                      <p className="text-xs font-medium text-primary">
                         {post.author}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-[#9b8d80]">
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {formatBlogDate(post.publishedAt)} · {post.readTime}
                       </p>
                     </td>
@@ -505,8 +500,8 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                         title={`Click to mark as ${isActive ? "Inactive" : "Active"}`}
                         className={`inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] transition disabled:opacity-50 ${
                           isActive
-                            ? "bg-[#e8f4ec] text-[#168252] hover:bg-[#d7ecd9]"
-                            : "bg-[#f2efeb] text-[#77675d] hover:bg-[#e5dfd7]"
+                            ? "bg-success/10 text-success hover:bg-success/20"
+                            : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
                         }`}
                       >
                         {isActive ? <Eye size={12} /> : <EyeOff size={12} />}
@@ -521,7 +516,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                             target="_blank"
                             aria-label={`Open live blog post ${post.title}`}
                             title="Open live page"
-                            className="border border-[#e4dbd1] p-2 text-[#5f5750] hover:border-[#8d3428] hover:text-[#8d3428]"
+                            className="border border-border p-2 text-muted-foreground hover:border-accent hover:text-accent"
                           >
                             <ExternalLink size={15} />
                           </Link>
@@ -534,7 +529,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                           }}
                           aria-label={`Preview ${post.title}`}
                           title="Preview"
-                          className="border border-[#e4dbd1] p-2 hover:border-[#8d3428]"
+                          className="border border-border p-2 hover:border-accent"
                         >
                           <Eye size={15} />
                         </button>
@@ -543,7 +538,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                           onClick={() => startEdit(post)}
                           aria-label={`Edit ${post.title}`}
                           title="Edit"
-                          className="border border-[#e4dbd1] p-2 hover:border-[#8d3428]"
+                          className="border border-border p-2 hover:border-accent"
                         >
                           <Pencil size={15} />
                         </button>
@@ -553,14 +548,14 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                               type="button"
                               disabled={isBusy}
                               onClick={() => handleDelete(post.id)}
-                              className="bg-[#a44436] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+                              className="bg-accent px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white"
                             >
                               Delete
                             </button>
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteId(null)}
-                              className="border border-[#e4dbd1] px-2 py-1.5 text-[10px]"
+                              className="border border-border px-2 py-1.5 text-[10px]"
                             >
                               Cancel
                             </button>
@@ -571,7 +566,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                             onClick={() => setConfirmDeleteId(post.id)}
                             aria-label={`Delete ${post.title}`}
                             title="Delete"
-                            className="border border-[#e4dbd1] p-2 text-[#a44436] hover:border-[#a44436]"
+                            className="border border-border p-2 text-accent hover:border-accent"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -585,9 +580,14 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
           </table>
         </div>
 
-        {!visiblePosts.length && (
-          <p className="p-8 text-center text-sm text-[#77675d]">
-            No blog posts match your current search or status filter.
+        {loading && (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            Loading journal stories...
+          </p>
+        )}
+        {!loading && !visiblePosts.length && (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            {search ? "No stories match your search." : "No stories published yet. Click \"Add blog post\" to write one."}
           </p>
         )}
         <TablePagination
@@ -606,7 +606,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
       {dialog && (
         <div
           role="presentation"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#201915]/55 sm:items-center sm:p-5"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-5"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setDialog(null);
           }}
@@ -615,16 +615,16 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="blog-dialog-title"
-            className="max-h-[94vh] w-full overflow-y-auto bg-[#fffdf9] p-5 sm:max-w-4xl sm:p-8"
+            className="max-h-[94vh] w-full overflow-y-auto bg-popover p-5 sm:max-w-4xl sm:p-8"
           >
-            <div className="flex items-start justify-between gap-3 border-b border-[#e8ded2] pb-4">
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#a44436]">
-                  Majisavesh journal
+                <p className="text-[10px] uppercase tracking-[0.2em] text-accent">
+                  KiddieQuick journal
                 </p>
                 <h2
                   id="blog-dialog-title"
-                  className="mt-1 font-serif text-2xl text-[#39231e] sm:text-3xl"
+                  className="mt-1 font-serif text-2xl text-primary sm:text-3xl"
                 >
                   {dialog === "add"
                     ? "Create new blog post"
@@ -637,7 +637,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                 type="button"
                 onClick={() => setDialog(null)}
                 aria-label="Close dialog"
-                className="p-2 text-[#77675d] hover:text-[#39231e]"
+                className="p-2 text-muted-foreground hover:text-primary"
               >
                 <X size={18} />
               </button>
@@ -649,27 +649,27 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                   <span
                     className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
                       activePost.status === "active"
-                        ? "bg-[#e8f4ec] text-[#168252]"
-                        : "bg-[#f2efeb] text-[#77675d]"
+                        ? "bg-success/10 text-success"
+                        : "bg-secondary/50 text-muted-foreground"
                     }`}
                   >
                     {activePost.status}
                   </span>
-                  <span className="font-mono text-xs text-[#77675d]">
+                  <span className="font-mono text-xs text-muted-foreground">
                     /blog/{activePost.slug}
                   </span>
                 </div>
 
-                <h3 className="mt-4 font-serif text-3xl text-[#39231e]">
+                <h3 className="mt-4 font-serif text-3xl text-primary">
                   {activePost.title}
                 </h3>
-                <p className="mt-2 text-xs text-[#77675d]">
+                <p className="mt-2 text-xs text-muted-foreground">
                   {activePost.category} · By {activePost.author} ·{" "}
                   {formatBlogDate(activePost.publishedAt)} ·{" "}
                   {activePost.readTime}
                 </p>
 
-                <div className="relative mt-5 aspect-[16/9] overflow-hidden border border-[#e8ded2] bg-[#f3ece2]">
+                <div className="relative mt-5 aspect-[16/9] overflow-hidden border border-border bg-secondary">
                   <BlogCoverImage
                     src={activePost.coverImage}
                     alt={activePost.coverImageAlt || activePost.title}
@@ -678,24 +678,24 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                   />
                 </div>
                 {activePost.coverImageAlt && (
-                  <p className="mt-2 text-center text-xs text-[#77675d]">
+                  <p className="mt-2 text-center text-xs text-muted-foreground">
                     Main cover alt: {activePost.coverImageAlt}
                   </p>
                 )}
 
-                <p className="mt-6 border-l-2 border-[#d6af7a] pl-4 text-sm italic leading-7 text-[#5d4f47]">
+                <p className="mt-6 border-l-2 border-accent pl-4 text-sm italic leading-7 text-muted-foreground">
                   {activePost.excerpt}
                 </p>
 
-                <div className="mt-6 border-t border-[#e8ded2] pt-6">
+                <div className="mt-6 border-t border-border pt-6">
                   <BlogRichContent html={activePost.contentHtml} />
                 </div>
 
-                <div className="mt-8 flex flex-wrap gap-3 border-t border-[#e8ded2] pt-5">
+                <div className="mt-8 flex flex-wrap gap-3 border-t border-border pt-5">
                   <button
                     type="button"
                     onClick={() => startEdit(activePost)}
-                    className="bg-[#39231e] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white"
+                    className="bg-primary px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white"
                   >
                     Edit post
                   </button>
@@ -703,7 +703,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                     <Link
                       href={`/blog/${activePost.slug}`}
                       target="_blank"
-                      className="inline-flex items-center gap-1.5 border border-[#39231e] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#39231e]"
+                      className="inline-flex items-center gap-1.5 border border-primary px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary"
                     >
                       Open live story <ExternalLink size={12} />
                     </Link>
@@ -713,7 +713,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
             ) : (
               <form onSubmit={handleSubmit} className="mt-6 space-y-6">
                 <div className="grid gap-4 sm:grid-cols-[1.35fr_0.65fr]">
-                  <label className="block text-xs font-medium text-[#4b3c33]">
+                  <label className="block text-xs font-medium text-foreground/90">
                     Blog Title *
                     <input
                       type="text"
@@ -722,14 +722,14 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                       onChange={(event) =>
                         handleTitleChange(event.target.value)
                       }
-                      placeholder="e.g., The Art of Rajputi Poshak"
-                      className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm text-[#33251f] outline-none focus:border-[#8d3428]"
+                      placeholder="e.g., Summer Essentials & Festive Styling Guide"
+                      className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent"
                     />
                   </label>
 
-                  <div className="text-xs font-medium text-[#4b3c33]">
+                  <div className="text-xs font-medium text-foreground/90">
                     <span>Visibility Status *</span>
-                    <div className="mt-1.5 grid grid-cols-2 border border-[#ded3c7] bg-white p-1">
+                    <div className="mt-1.5 grid grid-cols-2 border border-input bg-white p-1">
                       {(["active", "inactive"] as const).map((statusOption) => {
                         const selected = draft.status === statusOption;
                         return (
@@ -745,9 +745,9 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                             className={`py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition ${
                               selected
                                 ? statusOption === "active"
-                                  ? "bg-[#168252] text-white"
-                                  : "bg-[#77675d] text-white"
-                                : "text-[#77675d] hover:text-[#39231e]"
+                                  ? "bg-success text-white"
+                                  : "bg-muted-foreground text-white"
+                                : "text-muted-foreground hover:text-primary"
                             }`}
                           >
                             {statusOption}
@@ -759,10 +759,10 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-xs font-medium text-[#4b3c33]">
+                  <label className="block text-xs font-medium text-foreground/90">
                     URL Slug *
-                    <div className="mt-1.5 flex items-center border border-[#ded3c7] bg-white">
-                      <span className="border-r border-[#e8ded2] bg-[#faf7f3] px-3 py-2.5 font-mono text-xs text-[#77675d]">
+                    <div className="mt-1.5 flex items-center border border-input bg-white">
+                      <span className="border-r border-border bg-background px-3 py-2.5 font-mono text-xs text-muted-foreground">
                         /blog/
                       </span>
                       <input
@@ -778,8 +778,8 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                               .replace(/\s+/g, "-"),
                           }));
                         }}
-                        placeholder="art-of-rajputi-poshak"
-                        className="w-full px-3 py-2.5 font-mono text-xs text-[#33251f] outline-none"
+                        placeholder="summer-essentials-styling-guide"
+                        className="w-full px-3 py-2.5 font-mono text-xs text-foreground outline-none"
                       />
                       <button
                         type="button"
@@ -791,14 +791,14 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                             slug: slugifyBlogTitle(prev.title),
                           }));
                         }}
-                        className="px-2.5 text-[#8d3428] hover:opacity-75"
+                        className="px-2.5 text-accent hover:opacity-75"
                       >
                         <Sparkles size={14} />
                       </button>
                     </div>
                   </label>
 
-                  <label className="block text-xs font-medium text-[#4b3c33]">
+                  <label className="block text-xs font-medium text-foreground/90">
                     Category *
                     <select
                       value={draft.category}
@@ -808,7 +808,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                           category: event.target.value,
                         }))
                       }
-                      className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm text-[#33251f] outline-none focus:border-[#8d3428]"
+                      className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent"
                     >
                       {BLOG_CATEGORIES.map((category) => (
                         <option key={category} value={category}>
@@ -820,7 +820,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <label className="block text-xs font-medium text-[#4b3c33]">
+                  <label className="block text-xs font-medium text-foreground/90">
                     Author *
                     <input
                       type="text"
@@ -832,10 +832,10 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                           author: event.target.value,
                         }))
                       }
-                      className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm text-[#33251f] outline-none focus:border-[#8d3428]"
+                      className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent"
                     />
                   </label>
-                  <label className="block text-xs font-medium text-[#4b3c33]">
+                  <label className="block text-xs font-medium text-foreground/90">
                     Publish Date *
                     <input
                       type="date"
@@ -847,10 +847,10 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                           publishedAt: event.target.value,
                         }))
                       }
-                      className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm text-[#33251f] outline-none focus:border-[#8d3428]"
+                      className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent"
                     />
                   </label>
-                  <label className="block text-xs font-medium text-[#4b3c33]">
+                  <label className="block text-xs font-medium text-foreground/90">
                     Read Time (auto if blank)
                     <input
                       type="text"
@@ -862,18 +862,18 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                         }))
                       }
                       placeholder={estimateReadTime(draft.contentHtml)}
-                      className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm text-[#33251f] outline-none focus:border-[#8d3428]"
+                      className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent"
                     />
                   </label>
                 </div>
 
-                <div className="border border-[#e4dbd1] bg-[#faf7f3] p-4">
+                <div className="border border-border bg-background p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a44436]">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
                         Main Cover Image *
                       </p>
-                      <p className="mt-0.5 text-xs text-[#77675d]">
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         Displayed on the /blog card and hero header of the
                         article page (separate from detail content images).
                       </p>
@@ -890,7 +890,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                         type="button"
                         disabled={uploadingCover}
                         onClick={() => coverUploadRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 border border-[#39231e] bg-white px-3 py-2 text-xs font-medium text-[#39231e] transition hover:bg-[#39231e] hover:text-white disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 border border-primary bg-white px-3 py-2 text-xs font-medium text-primary transition hover:bg-primary hover:text-white disabled:opacity-50"
                       >
                         <Upload size={13} />
                         {uploadingCover ? "Uploading..." : "Upload cover"}
@@ -899,7 +899,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                   </div>
 
                   <div className="mt-4 grid gap-4 sm:grid-cols-[200px_1fr]">
-                    <div className="relative aspect-[16/10] overflow-hidden border border-[#ded3c7] bg-[#eee4d8]">
+                    <div className="relative aspect-[16/10] overflow-hidden border border-input bg-secondary">
                       <BlogCoverImage
                         src={draft.coverImage}
                         alt={draft.coverImageAlt || "Cover preview"}
@@ -921,8 +921,8 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                             }
                             className={`border px-2.5 py-1 text-[11px] transition ${
                               draft.coverImage === preset.value
-                                ? "border-[#8d3428] bg-[#f7eee9] font-medium text-[#8d3428]"
-                                : "border-[#ded3c7] bg-white text-[#5f5750] hover:border-[#39231e]"
+                                ? "border-accent bg-accent/10 font-medium text-accent"
+                                : "border-input bg-white text-muted-foreground hover:border-primary"
                             }`}
                           >
                             {preset.label}
@@ -940,7 +940,7 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                           }))
                         }
                         placeholder="Cover image URL (/products/... or https://...)"
-                        className="w-full border border-[#ded3c7] bg-white px-3 py-2 text-xs text-[#33251f] outline-none focus:border-[#8d3428]"
+                        className="w-full border border-input bg-white px-3 py-2 text-xs text-foreground outline-none focus:border-accent"
                       />
                       <input
                         type="text"
@@ -952,13 +952,13 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                           }))
                         }
                         placeholder="Cover image caption / alt text"
-                        className="w-full border border-[#ded3c7] bg-white px-3 py-2 text-xs text-[#33251f] outline-none focus:border-[#8d3428]"
+                        className="w-full border border-input bg-white px-3 py-2 text-xs text-foreground outline-none focus:border-accent"
                       />
                     </div>
                   </div>
                 </div>
 
-                <label className="block text-xs font-medium text-[#4b3c33]">
+                <label className="block text-xs font-medium text-foreground/90">
                   Short Summary / Excerpt *
                   <textarea
                     rows={2}
@@ -971,16 +971,16 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                       }))
                     }
                     placeholder="Brief introduction displayed on the blog listing page..."
-                    className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm text-[#33251f] outline-none focus:border-[#8d3428]"
+                    className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent"
                   />
                 </label>
 
                 <div>
                   <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-[#4b3c33]">
+                    <span className="text-xs font-medium text-foreground/90">
                       Detailed Story Content (Rich Text + Inline Images) *
                     </span>
-                    <span className="text-[11px] text-[#77675d]">
+                    <span className="text-[11px] text-muted-foreground">
                       Use <strong>Add detail image</strong> in toolbar to embed
                       photos inside the article body
                     </span>
@@ -994,18 +994,18 @@ export function BlogManager({ initialPosts }: { initialPosts: BlogPost[] }) {
                   />
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e8ded2] pt-5">
+                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-5">
                   <button
                     type="button"
                     onClick={() => setDialog(null)}
-                    className="border border-[#ded3c7] bg-white px-5 py-2.5 text-xs font-medium text-[#5f5750] hover:border-[#39231e]"
+                    className="border border-input bg-white px-5 py-2.5 text-xs font-medium text-muted-foreground hover:border-primary"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="bg-[#8d3428] px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-[#70281f] disabled:opacity-50"
+                    className="bg-accent px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-accent/90 disabled:opacity-50"
                   >
                     {submitting
                       ? "Saving..."

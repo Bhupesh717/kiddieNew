@@ -14,18 +14,29 @@ import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import {
   FREE_SHIPPING_THRESHOLD,
   formatPrice,
-  products as defaultCatalogProducts,
   type StoreProduct,
 } from "@/src/lib/store/catalog";
 import { BlogCoverImage } from "@/components/storefront/blog-cover-image";
 
-const CART_STORAGE_KEY = "majisavesh_store_cart_v1";
-const WISHLIST_STORAGE_KEY = "majisavesh_store_wishlist_v1";
-const ADMIN_PRODUCTS_STORAGE_KEY = "majisavesh_admin_products_v1";
+const CART_STORAGE_KEY = "kiddiequick_store_cart_v2";
+const WISHLIST_STORAGE_KEY = "kiddiequick_store_wishlist_v2";
+
+export type CartVariantInfo = {
+  size: string;
+  color?: string;
+  sku?: string;
+  variantId?: string;
+  price?: number;
+  stock?: number;
+};
 
 export type CartLine = {
   productId: string;
   size: string;
+  color?: string;
+  sku?: string;
+  variantId?: string;
+  price?: number;
   quantity: number;
   selected: boolean;
 };
@@ -33,6 +44,7 @@ export type CartLine = {
 export type CartItem = CartLine & {
   lineKey: string;
   product: StoreProduct;
+  unitPrice: number;
 };
 
 type CartContextValue = {
@@ -43,10 +55,19 @@ type CartContextValue = {
   wishlist: string[];
   wishlistCount: number;
   isHydrated: boolean;
-  addItem: (productId: string, quantity?: number, size?: string) => void;
-  setQuantity: (productId: string, size: string, quantity: number) => void;
-  removeItem: (productId: string, size: string) => void;
-  toggleSelected: (productId: string, size: string) => void;
+  addItem: (
+    productId: string,
+    quantity?: number,
+    variantOrSize?: string | CartVariantInfo,
+  ) => void;
+  setQuantity: (
+    productId: string,
+    size: string,
+    quantity: number,
+    color?: string,
+  ) => void;
+  removeItem: (productId: string, size: string, color?: string) => void;
+  toggleSelected: (productId: string, size: string, color?: string) => void;
   toggleAllSelected: (selected: boolean) => void;
   clearSelectedItems: () => void;
   clearCart: () => void;
@@ -58,8 +79,12 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function getCartLineKey(productId: string, size: string) {
-  return `${productId}::${size}`;
+export function getCartLineKey(
+  productId: string,
+  size: string,
+  color?: string,
+) {
+  return `${productId}::${color || "standard"}::${size || "standard"}`;
 }
 
 const DEFAULT_LINE_VARIANT = "standard";
@@ -71,82 +96,94 @@ export function useCart() {
 }
 
 export function StorefrontProvider({ children }: { children: ReactNode }) {
-  const [catalogProducts, setCatalogProducts] = useState<StoreProduct[]>(
-    defaultCatalogProducts,
-  );
+  const [catalogProducts, setCatalogProducts] = useState<StoreProduct[]>([]);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    let activeCatalog = defaultCatalogProducts;
-    try {
-      const savedProducts = window.localStorage.getItem(
-        ADMIN_PRODUCTS_STORAGE_KEY,
-      );
-      if (savedProducts) {
-        const parsedProducts = JSON.parse(savedProducts) as unknown;
-        if (Array.isArray(parsedProducts) && parsedProducts.length > 0) {
-          activeCatalog = parsedProducts as StoreProduct[];
-          setCatalogProducts(activeCatalog);
-        }
-      }
+    fetch("/api/products")
+      .then((res) => res.json())
+      .then((payload) => {
+        const liveProducts: StoreProduct[] =
+          payload?.success && Array.isArray(payload.data) ? payload.data : [];
+        setCatalogProducts(liveProducts);
 
-      const savedCart = window.localStorage.getItem(CART_STORAGE_KEY);
-      if (savedCart) {
-        const parsed = JSON.parse(savedCart) as unknown;
-        if (Array.isArray(parsed)) {
-          const validLines = parsed.flatMap((entry): CartLine[] => {
-            if (!entry || typeof entry !== "object") return [];
-            const record = entry as Partial<CartLine>;
-            if (typeof record.productId !== "string") return [];
-            const product = activeCatalog.find(
-              (item) => item.id === record.productId,
-            );
-            if (!product || product.stock <= 0) return [];
-            const size =
-              typeof record.size === "string" && record.size.length > 0
-                ? record.size
-                : DEFAULT_LINE_VARIANT;
-            const quantity =
-              typeof record.quantity === "number" &&
-              Number.isFinite(record.quantity)
-                ? Math.max(
-                    1,
-                    Math.min(Math.floor(record.quantity), product.stock),
-                  )
-                : 1;
-            return [
-              {
-                productId: record.productId,
-                size,
-                quantity,
-                selected: record.selected !== false,
-              },
-            ];
-          });
-          setLines(validLines);
+        try {
+          const savedCart = window.localStorage.getItem(CART_STORAGE_KEY);
+          if (savedCart) {
+            const parsed = JSON.parse(savedCart) as unknown;
+            if (Array.isArray(parsed)) {
+              const validLines = parsed.flatMap((entry): CartLine[] => {
+                if (!entry || typeof entry !== "object") return [];
+                const record = entry as Partial<CartLine>;
+                if (
+                  typeof record.productId !== "string" &&
+                  typeof (record as any).productId !== "number"
+                )
+                  return [];
+                const pid = String(record.productId);
+                const product = liveProducts.find(
+                  (item) => String(item.id) === pid,
+                );
+                if (!product || product.stock <= 0) return [];
+                const size =
+                  typeof record.size === "string" && record.size.length > 0
+                    ? record.size
+                    : DEFAULT_LINE_VARIANT;
+                const color =
+                  typeof record.color === "string" ? record.color : undefined;
+                const quantity =
+                  typeof record.quantity === "number" &&
+                  Number.isFinite(record.quantity)
+                    ? Math.max(
+                        1,
+                        Math.min(Math.floor(record.quantity), product.stock),
+                      )
+                    : 1;
+                return [
+                  {
+                    productId: pid,
+                    size,
+                    color,
+                    sku: record.sku,
+                    variantId: record.variantId,
+                    price:
+                      typeof record.price === "number"
+                        ? record.price
+                        : product.price,
+                    quantity,
+                    selected: record.selected !== false,
+                  },
+                ];
+              });
+              setLines(validLines);
+            }
+          }
+          const savedWishlist =
+            window.localStorage.getItem(WISHLIST_STORAGE_KEY);
+          if (savedWishlist) {
+            const parsed = JSON.parse(savedWishlist) as unknown;
+            if (Array.isArray(parsed)) {
+              setWishlist(
+                parsed.filter(
+                  (id): id is string =>
+                    typeof id === "string" &&
+                    liveProducts.some((item) => String(item.id) === id),
+                ),
+              );
+            }
+          }
+        } catch {
+          // Ignore malformed storage entries
+        } finally {
+          setIsHydrated(true);
         }
-      }
-      const savedWishlist = window.localStorage.getItem(WISHLIST_STORAGE_KEY);
-      if (savedWishlist) {
-        const parsed = JSON.parse(savedWishlist) as unknown;
-        if (Array.isArray(parsed)) {
-          setWishlist(
-            parsed.filter(
-              (id): id is string =>
-                typeof id === "string" &&
-                activeCatalog.some((item) => item.id === id),
-            ),
-          );
-        }
-      }
-    } catch {
-      // Ignore malformed storage entries
-    } finally {
-      setIsHydrated(true);
-    }
+      })
+      .catch(() => {
+        setIsHydrated(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -177,11 +214,16 @@ export function StorefrontProvider({ children }: { children: ReactNode }) {
           (item) => item.id === line.productId,
         );
         if (!product) return [];
+        const unitPrice =
+          typeof line.price === "number" && line.price > 0
+            ? line.price
+            : product.price;
         return [
           {
             ...line,
-            lineKey: getCartLineKey(line.productId, line.size),
+            lineKey: getCartLineKey(line.productId, line.size, line.color),
             product,
+            unitPrice,
           },
         ];
       }),
@@ -189,18 +231,48 @@ export function StorefrontProvider({ children }: { children: ReactNode }) {
   );
 
   const addItem = useCallback(
-    (productId: string, quantity = 1, size?: string) => {
+    (
+      productId: string,
+      quantity = 1,
+      variantOrSize?: string | CartVariantInfo,
+    ) => {
       const product = catalogProducts.find((item) => item.id === productId);
       if (!product || product.stock <= 0) return;
-      const resolvedSize = size || DEFAULT_LINE_VARIANT;
-      const maxStock = product.stock;
+
+      let size = DEFAULT_LINE_VARIANT;
+      let color: string | undefined = undefined;
+      let sku: string | undefined = undefined;
+      let variantId: string | undefined = undefined;
+      let price = product.price;
+      let maxStock = product.stock;
+
+      if (typeof variantOrSize === "string") {
+        size = variantOrSize || DEFAULT_LINE_VARIANT;
+      } else if (variantOrSize && typeof variantOrSize === "object") {
+        size = variantOrSize.size || DEFAULT_LINE_VARIANT;
+        color = variantOrSize.color;
+        sku = variantOrSize.sku;
+        variantId = variantOrSize.variantId;
+        if (typeof variantOrSize.price === "number") {
+          price = variantOrSize.price;
+        }
+        if (typeof variantOrSize.stock === "number") {
+          maxStock = variantOrSize.stock;
+        }
+      }
+
       setLines((current) => {
         const existing = current.find(
-          (line) => line.productId === productId && line.size === resolvedSize,
+          (line) =>
+            line.productId === productId &&
+            line.size === size &&
+            line.color === color,
         );
         if (existing) {
           return current.map((line) =>
-            line.productId === productId && line.size === resolvedSize
+            line.productId === productId &&
+            line.size === size &&
+            line.color === color
               ? {
                   ...line,
                   quantity: Math.min(line.quantity + quantity, maxStock),
@@ -212,7 +284,11 @@ export function StorefrontProvider({ children }: { children: ReactNode }) {
           ...current,
           {
             productId,
-            size: resolvedSize,
+            size,
+            color,
+            sku,
+            variantId,
+            price,
             quantity: Math.max(1, Math.min(quantity, maxStock)),
             selected: true,
           },
@@ -223,12 +299,14 @@ export function StorefrontProvider({ children }: { children: ReactNode }) {
   );
 
   const setQuantity = useCallback(
-    (productId: string, size: string, quantity: number) => {
-      const maxStock =
-        catalogProducts.find((item) => item.id === productId)?.stock ?? 99;
+    (productId: string, size: string, quantity: number, color?: string) => {
+      const product = catalogProducts.find((item) => item.id === productId);
+      const maxStock = product?.stock ?? 99;
       setLines((current) =>
         current.map((line) =>
-          line.productId === productId && line.size === size
+          line.productId === productId &&
+          line.size === size &&
+          line.color === color
             ? { ...line, quantity: Math.max(1, Math.min(quantity, maxStock)) }
             : line,
         ),
@@ -237,23 +315,36 @@ export function StorefrontProvider({ children }: { children: ReactNode }) {
     [catalogProducts],
   );
 
-  const removeItem = useCallback((productId: string, size: string) => {
-    setLines((current) =>
-      current.filter(
-        (line) => !(line.productId === productId && line.size === size),
-      ),
-    );
-  }, []);
+  const removeItem = useCallback(
+    (productId: string, size: string, color?: string) => {
+      setLines((current) =>
+        current.filter(
+          (line) =>
+            !(
+              line.productId === productId &&
+              line.size === size &&
+              line.color === color
+            ),
+        ),
+      );
+    },
+    [],
+  );
 
-  const toggleSelected = useCallback((productId: string, size: string) => {
-    setLines((current) =>
-      current.map((line) =>
-        line.productId === productId && line.size === size
-          ? { ...line, selected: !line.selected }
-          : line,
-      ),
-    );
-  }, []);
+  const toggleSelected = useCallback(
+    (productId: string, size: string, color?: string) => {
+      setLines((current) =>
+        current.map((line) =>
+          line.productId === productId &&
+          line.size === size &&
+          line.color === color
+            ? { ...line, selected: !line.selected }
+            : line,
+        ),
+      );
+    },
+    [],
+  );
 
   const toggleAllSelected = useCallback((selected: boolean) => {
     setLines((current) => current.map((line) => ({ ...line, selected })));
@@ -288,8 +379,7 @@ export function StorefrontProvider({ children }: { children: ReactNode }) {
     items,
     count: items.reduce((sum, item) => sum + item.quantity, 0),
     selectedTotal: items.reduce(
-      (sum, item) =>
-        sum + (item.selected ? item.product.price * item.quantity : 0),
+      (sum, item) => sum + (item.selected ? item.unitPrice * item.quantity : 0),
       0,
     ),
     wishlist,
@@ -346,41 +436,41 @@ function CartDrawer({ open }: { open: boolean }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#201915]/45 backdrop-blur-[1px]"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px]"
       onClick={closeCart}
     >
       <aside
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-title"
-        className="absolute inset-y-0 right-0 flex w-full flex-col bg-[#fffdf9] shadow-2xl sm:max-w-md"
+        className="absolute inset-y-0 right-0 flex w-full flex-col bg-popover shadow-2xl sm:max-w-md"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-[#e8ded2] px-5 py-5">
+        <header className="flex items-center justify-between border-b border-border px-5 py-5">
           <h2
             id="cart-title"
-            className="font-serif text-xl uppercase tracking-wide"
+            className="font-serif text-xl uppercase tracking-wide text-primary"
           >
-            Your shopping bag
+            Your Shopping Bag
           </h2>
           <button
             type="button"
             onClick={closeCart}
             aria-label="Close cart"
-            className="rounded-full p-2 transition hover:bg-[#f3ece2]"
+            className="rounded-full p-2 transition hover:bg-secondary"
           >
             <X size={18} />
           </button>
         </header>
-        <div className="border-b border-[#e8ded2] px-5 py-4">
-          <p className="text-xs font-medium text-[#138452]">
+        <div className="border-b border-border px-5 py-4">
+          <p className="text-xs font-medium text-success">
             {remaining === 0
-              ? "Free shipping on domestic orders above Rs 2,000."
-              : `Add ${formatPrice(remaining)} more for free shipping on domestic orders.`}
+              ? "Free shipping on orders above Rs. 2,000 unlocked!"
+              : `Add ${formatPrice(remaining)} more for free domestic shipping.`}
           </p>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e9e4dc]">
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
             <div
-              className="h-full rounded-full bg-[#15945f] transition-all duration-300"
+              className="h-full rounded-full bg-success transition-all duration-300"
               style={{
                 width: `${Math.min(100, (selectedTotal / FREE_SHIPPING_THRESHOLD) * 100)}%`,
               }}
@@ -389,118 +479,138 @@ function CartDrawer({ open }: { open: boolean }) {
         </div>
         {items.length ? (
           <div className="flex-1 overflow-y-auto px-5">
-            {items.map(({ lineKey, product, size, quantity, selected }) => (
-              <article
-                key={lineKey}
-                className="flex gap-3 border-b border-[#e8ded2] py-5"
-              >
-                <input
-                  type="checkbox"
-                  aria-label={`Select ${product.name}`}
-                  checked={selected}
-                  onChange={() => toggleSelected(product.id, size)}
-                  className="mt-2 accent-[#8d3428]"
-                />
-                <Link
-                  href={`/products/${product.slug}`}
-                  onClick={closeCart}
-                  className="relative size-20 shrink-0 overflow-hidden bg-[#f1e8dd]"
+            {items.map(
+              ({
+                lineKey,
+                product,
+                size,
+                color,
+                sku,
+                unitPrice,
+                quantity,
+                selected,
+              }) => (
+                <article
+                  key={lineKey}
+                  className="flex gap-3 border-b border-border py-5"
                 >
-                  <BlogCoverImage
-                    src={product.image}
-                    alt={product.name}
-                    sizes="80px"
-                    className="object-cover"
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${product.name}`}
+                    checked={selected}
+                    onChange={() => toggleSelected(product.id, size, color)}
+                    className="mt-2 accent-accent"
                   />
-                </Link>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <Link
-                        href={`/products/${product.slug}`}
-                        onClick={closeCart}
-                        className="font-serif text-base leading-tight hover:text-[#8d3428]"
+                  <Link
+                    href={`/products/${product.slug}`}
+                    onClick={closeCart}
+                    className="relative size-20 shrink-0 overflow-hidden bg-secondary"
+                  >
+                    <BlogCoverImage
+                      src={product.image}
+                      alt={product.name}
+                      sizes="80px"
+                      className="object-cover"
+                    />
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <Link
+                          href={`/products/${product.slug}`}
+                          onClick={closeCart}
+                          className="font-serif text-base leading-tight hover:text-accent"
+                        >
+                          {product.name}
+                        </Link>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                          {color && (
+                            <span className="rounded bg-secondary px-1.5 py-0.5 font-medium text-primary">
+                              {color}
+                            </span>
+                          )}
+                          {size && size !== DEFAULT_LINE_VARIANT && (
+                            <span className="rounded border border-input px-1.5 py-0.5 font-medium">
+                              Size: {size}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${product.name}`}
+                        onClick={() => removeItem(product.id, size, color)}
+                        className="p-1 text-accent transition hover:opacity-75"
                       >
-                        {product.name}
-                      </Link>
-                      <p className="mt-1 text-[10px] uppercase tracking-wider text-[#8b796b]">
-                        {product.category} · {product.fabric}
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="flex items-center border border-border">
+                        <button
+                          type="button"
+                          aria-label={`Decrease ${product.name} quantity`}
+                          onClick={() =>
+                            setQuantity(product.id, size, quantity - 1, color)
+                          }
+                          disabled={quantity <= 1}
+                          className="p-1.5 disabled:opacity-40"
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="min-w-8 text-center text-xs font-medium">
+                          {quantity}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Increase ${product.name} quantity`}
+                          onClick={() =>
+                            setQuantity(product.id, size, quantity + 1, color)
+                          }
+                          disabled={quantity >= product.stock}
+                          className="p-1.5 disabled:opacity-40"
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                      <p className="text-sm font-semibold text-accent">
+                        {formatPrice(unitPrice * quantity)}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${product.name}`}
-                      onClick={() => removeItem(product.id, size)}
-                      className="p-1 text-[#a44436] transition hover:opacity-75"
-                    >
-                      <Trash2 size={16} />
-                    </button>
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="flex items-center border border-[#e8ded2]">
-                      <button
-                        type="button"
-                        aria-label={`Decrease ${product.name} quantity`}
-                        onClick={() =>
-                          setQuantity(product.id, size, quantity - 1)
-                        }
-                        disabled={quantity <= 1}
-                        className="p-1.5 disabled:opacity-40"
-                      >
-                        <Minus size={13} />
-                      </button>
-                      <span className="min-w-8 text-center text-xs">
-                        {quantity}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label={`Increase ${product.name} quantity`}
-                        onClick={() =>
-                          setQuantity(product.id, size, quantity + 1)
-                        }
-                        disabled={quantity >= product.stock}
-                        className="p-1.5 disabled:opacity-40"
-                      >
-                        <Plus size={13} />
-                      </button>
-                    </div>
-                    <p className="text-sm font-medium">
-                      {formatPrice(product.price * quantity)}
-                    </p>
-                  </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ),
+            )}
           </div>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-            <ShoppingBag className="text-[#a48668]" size={30} />
-            <h3 className="mt-4 font-serif text-xl">Your bag is waiting</h3>
-            <p className="mt-2 text-sm text-[#77675d]">
-              Find something beautiful for your next celebration.
+            <ShoppingBag className="text-muted-foreground" size={32} />
+            <h3 className="mt-4 font-serif text-xl">Your bag is empty</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Explore smart collections for Kids, Men, and Women.
             </p>
             <Link
               href="/collection"
               onClick={closeCart}
-              className="mt-5 bg-[#39231e] px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-white transition hover:bg-[#52342c]"
+              className="mt-5 bg-primary px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-white transition hover:bg-primary/90"
             >
-              Explore collection
+              Explore Collection
             </Link>
           </div>
         )}
-        <footer className="border-t border-[#e8ded2] bg-[#fbf8f3] p-5">
+        <footer className="border-t border-border bg-background p-5">
           <div className="flex justify-between text-sm">
             <span>Selected subtotal</span>
             <strong>{formatPrice(selectedTotal)}</strong>
           </div>
-          <p className="mt-1 text-[10px] text-[#8b796b]">
-            Shipping and promo codes calculated at checkout.
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Shipping &amp; promo codes calculated at checkout.
           </p>
           {hasSelected ? (
             <Link
               href="/checkout"
               onClick={closeCart}
-              className="mt-4 block w-full bg-[#39231e] py-3.5 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[#52342c]"
+              className="mt-4 block w-full bg-accent py-3.5 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-accent/90"
             >
               Proceed to checkout
             </Link>
@@ -508,22 +618,15 @@ function CartDrawer({ open }: { open: boolean }) {
             <button
               type="button"
               disabled
-              className="mt-4 block w-full cursor-not-allowed bg-[#b4aaa1] py-3.5 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-white"
+              className="mt-4 block w-full cursor-not-allowed bg-muted py-3.5 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-white"
             >
               Proceed to checkout
             </button>
           )}
-          <Link
-            href="/cart"
-            onClick={closeCart}
-            className="mt-3 block w-full border border-[#cbbcae] py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] transition hover:border-[#39231e]"
-          >
-            View cart
-          </Link>
           <button
             type="button"
             onClick={closeCart}
-            className="mt-3 w-full py-2 text-[10px] uppercase tracking-[0.16em] text-[#75675d] transition hover:text-[#39231e]"
+            className="mt-3 w-full py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground transition hover:text-primary"
           >
             Continue shopping
           </button>

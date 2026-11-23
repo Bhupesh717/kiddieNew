@@ -37,7 +37,7 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
 
   return (
     <section className="container mx-auto px-4 py-10 sm:px-6 lg:py-14">
-      <div className="mb-8 flex flex-col gap-4 border-b border-[#e8ded2] pb-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-8 flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-center lg:justify-between">
         <div
           role="tablist"
           aria-label="Filter journal by category"
@@ -54,8 +54,8 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
                 onClick={() => setSelectedCategory(category)}
                 className={`px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
                   active
-                    ? "bg-[#39231e] text-[#fff9f0]"
-                    : "border border-[#ded3c7] bg-white text-[#4b3c33] hover:border-[#39231e]"
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-input bg-white text-foreground/90 hover:border-primary"
                 }`}
               >
                 {category}
@@ -64,24 +64,24 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
           })}
         </div>
 
-        <label className="flex w-full items-center gap-2 border border-[#ded3c7] bg-white px-3.5 py-2.5 lg:w-72">
-          <Search size={15} className="shrink-0 text-[#8b796b]" />
+        <label className="flex w-full items-center gap-2 border border-input bg-white px-3.5 py-2.5 lg:w-72">
+          <Search size={15} className="shrink-0 text-muted-foreground" />
           <span className="sr-only">Search journal articles</span>
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search craft, bridal, silk..."
-            className="w-full bg-transparent text-sm text-[#33251f] outline-none placeholder:text-[#a49a90]"
+            className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
         </label>
       </div>
 
       {featuredPost && (
-        <article className="mb-12 grid overflow-hidden border border-[#e8ded2] bg-white lg:grid-cols-[1.15fr_1fr]">
+        <article className="mb-12 grid overflow-hidden border border-border bg-white lg:grid-cols-[1.15fr_1fr]">
           <Link
             href={`/blog/${featuredPost.slug}`}
-            className="group relative block aspect-[4/3] overflow-hidden bg-[#eee4d8] lg:aspect-auto lg:min-h-[420px]"
+            className="group relative block aspect-[4/3] overflow-hidden bg-secondary lg:aspect-auto lg:min-h-[420px]"
           >
             <BlogCoverImage
               src={featuredPost.coverImage}
@@ -94,26 +94,26 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
           <div className="flex flex-col justify-between p-6 sm:p-9 lg:p-11">
             <div>
               <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                <span className="text-[#a44436]">Featured story</span>
-                <span className="text-[#d6af7a]">·</span>
-                <span className="text-[#77675d]">{featuredPost.category}</span>
+                <span className="text-accent">Featured story</span>
+                <span className="text-amber-200/90">·</span>
+                <span className="text-muted-foreground">{featuredPost.category}</span>
               </div>
-              <h2 className="mt-4 font-serif text-3xl leading-tight text-[#39231e] sm:text-4xl">
+              <h2 className="mt-4 font-serif text-3xl leading-tight text-primary sm:text-4xl">
                 <Link
                   href={`/blog/${featuredPost.slug}`}
-                  className="transition hover:text-[#8d3428]"
+                  className="transition hover:text-accent"
                 >
                   {featuredPost.title}
                 </Link>
               </h2>
-              <p className="mt-4 text-sm leading-7 text-[#6f5f55]">
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">
                 {featuredPost.excerpt}
               </p>
             </div>
 
-            <div className="mt-8 border-t border-[#eee5da] pt-5">
-              <div className="flex flex-wrap items-center gap-4 text-xs text-[#77675d]">
-                <span className="font-medium text-[#39231e]">
+            <div className="mt-8 border-t border-border pt-5">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                <span className="font-medium text-primary">
                   By {featuredPost.author}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
@@ -127,7 +127,7 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
               </div>
               <Link
                 href={`/blog/${featuredPost.slug}`}
-                className="mt-5 inline-flex items-center gap-2 bg-[#39231e] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-[#52342c]"
+                className="mt-5 inline-flex items-center gap-2 bg-primary px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-primary/90"
               >
                 Read story <ArrowRight size={13} />
               </Link>
@@ -142,7 +142,7 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
             <article key={post.id} className="group flex flex-col">
               <Link
                 href={`/blog/${post.slug}`}
-                className="relative aspect-[4/5] overflow-hidden border border-[#e8ded2] bg-[#eee4d8]"
+                className="relative aspect-[4/5] overflow-hidden border border-border bg-secondary"
               >
                 <BlogCoverImage
                   src={post.coverImage}
@@ -151,31 +151,31 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
                   className="object-cover object-center transition duration-500 group-hover:scale-[1.03]"
                 />
               </Link>
-              <div className="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a44436]">
+              <div className="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
                 <span>{post.category}</span>
-                <span className="text-[#c8b8a8]">·</span>
-                <span className="font-normal text-[#77675d]">
+                <span className="text-muted-foreground/60">·</span>
+                <span className="font-normal text-muted-foreground">
                   {post.readTime}
                 </span>
               </div>
-              <h3 className="mt-2 font-serif text-2xl leading-snug text-[#39231e]">
+              <h3 className="mt-2 font-serif text-2xl leading-snug text-primary">
                 <Link
                   href={`/blog/${post.slug}`}
-                  className="transition hover:text-[#8d3428]"
+                  className="transition hover:text-accent"
                 >
                   {post.title}
                 </Link>
               </h3>
-              <p className="mt-2.5 line-clamp-3 text-sm leading-6 text-[#6f5f55]">
+              <p className="mt-2.5 line-clamp-3 text-sm leading-6 text-muted-foreground">
                 {post.excerpt}
               </p>
-              <div className="mt-auto flex items-center justify-between border-t border-[#e8ded2] pt-4 text-xs text-[#77675d]">
+              <div className="mt-auto flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground">
                 <span>
                   {post.author} · {formatBlogDate(post.publishedAt)}
                 </span>
                 <Link
                   href={`/blog/${post.slug}`}
-                  className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#39231e] transition hover:text-[#a44436]"
+                  className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-primary transition hover:text-accent"
                 >
                   Read <ArrowRight size={12} />
                 </Link>
@@ -184,11 +184,11 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
           ))}
         </div>
       ) : !featuredPost ? (
-        <div className="border border-[#e8ded2] bg-white px-6 py-16 text-center">
-          <p className="font-serif text-2xl text-[#39231e]">
+        <div className="border border-border bg-white px-6 py-16 text-center">
+          <p className="font-serif text-2xl text-primary">
             No stories match that filter yet
           </p>
-          <p className="mt-2 text-sm text-[#77675d]">
+          <p className="mt-2 text-sm text-muted-foreground">
             Clear your search or choose another craft category to continue
             reading.
           </p>
@@ -199,7 +199,7 @@ export function BlogListing({ posts }: { posts: BlogPost[] }) {
                 setSelectedCategory("All");
                 setQuery("");
               }}
-              className="mt-6 inline-flex items-center gap-2 border border-[#39231e] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#39231e] transition hover:bg-[#39231e] hover:text-white"
+              className="mt-6 inline-flex items-center gap-2 border border-primary px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary transition hover:bg-primary hover:text-white"
             >
               <RotateCcw size={13} /> Reset filters
             </button>

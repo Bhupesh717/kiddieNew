@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 
 export function ShowcaseVideo({
-  src = "/majisa.mp4",
-  poster = "/Majisavesh_Banner.png",
+  src = "/KiddieQuick.mp4",
+  poster = "/KiddieQuick.png",
 }: {
   src?: string;
   poster?: string;
@@ -35,8 +35,8 @@ export function ShowcaseVideo({
 
   return (
     <section
-      aria-label="Majisavesh campaign film"
-      className="relative w-full overflow-hidden border-t border-[#e8ded2] bg-[#39231e]"
+      aria-label="KiddieQuick campaign film"
+      className="relative w-full overflow-hidden border-t border-border bg-primary"
     >
       <div className="relative aspect-video w-full max-h-[82vh] overflow-hidden">
         <video
@@ -53,7 +53,7 @@ export function ShowcaseVideo({
 
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#241410]/45 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent"
         />
 
         <div className="absolute bottom-3 right-3 flex items-center gap-2 sm:bottom-5 sm:right-6">
@@ -61,7 +61,7 @@ export function ShowcaseVideo({
             type="button"
             onClick={togglePlayback}
             aria-label={paused ? "Play video" : "Pause video"}
-            className="flex size-9 items-center justify-center rounded-full border border-[#f5e5c9]/30 bg-[#39231e]/75 text-[#f5e5c9] backdrop-blur-sm transition hover:bg-[#39231e]"
+            className="flex size-9 items-center justify-center rounded-full border border-white/20 bg-primary/75 text-white backdrop-blur-sm transition hover:bg-primary"
           >
             {paused ? <Play size={15} /> : <Pause size={15} />}
           </button>
@@ -69,7 +69,7 @@ export function ShowcaseVideo({
             type="button"
             onClick={toggleMute}
             aria-label={muted ? "Unmute video" : "Mute video"}
-            className="flex size-9 items-center justify-center rounded-full border border-[#f5e5c9]/30 bg-[#39231e]/75 text-[#f5e5c9] backdrop-blur-sm transition hover:bg-[#39231e]"
+            className="flex size-9 items-center justify-center rounded-full border border-white/20 bg-primary/75 text-white backdrop-blur-sm transition hover:bg-primary"
           >
             {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
@@ -78,4 +78,3 @@ export function ShowcaseVideo({
     </section>
   );
 }
-

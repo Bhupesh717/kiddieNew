@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Plus, RotateCcw, Search, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import {
   TablePagination,
   useTablePagination,
 } from "@/components/admin/table-pagination";
 
 export type ModuleField = {
+  key?: string;
   label: string;
   placeholder: string;
   defaultValue?: string;
 };
 
 type ModulePageProps = {
-  storageKey?: string;
   eyebrow: string;
   title: string;
   description: string;
@@ -22,6 +22,8 @@ type ModulePageProps = {
   createFields?: ModuleField[];
   columns: string[];
   rows: string[][];
+  loading?: boolean;
+  onCreate?: (values: Record<string, string>) => Promise<void> | void;
 };
 
 const positiveStatuses = new Set([
@@ -31,24 +33,23 @@ const positiveStatuses = new Set([
   "growing",
 ]);
 const warningStatuses = new Set(["processing", "shipped", "draft"]);
-const mutedStatuses = new Set(["expired"]);
+const mutedStatuses = new Set(["expired", "disabled"]);
 
 function getStatusBadgeClass(cell: string) {
   const normalized = cell.trim().toLowerCase();
   if (positiveStatuses.has(normalized)) {
-    return "inline-block bg-[#e8f4ec] px-2.5 py-0.5 text-[11px] font-medium text-[#168252]";
+    return "inline-block bg-success/10 px-2.5 py-0.5 text-[11px] font-medium text-success";
   }
   if (warningStatuses.has(normalized)) {
-    return "inline-block bg-[#f7f1e8] px-2.5 py-0.5 text-[11px] font-medium text-[#8d3428]";
+    return "inline-block bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-accent";
   }
   if (mutedStatuses.has(normalized)) {
-    return "inline-block bg-[#f2efeb] px-2.5 py-0.5 text-[11px] font-medium text-[#77675d]";
+    return "inline-block bg-secondary/50 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground";
   }
   return null;
 }
 
 export function ModulePage({
-  storageKey,
   eyebrow,
   title,
   description,
@@ -56,29 +57,20 @@ export function ModulePage({
   createFields,
   columns,
   rows: initialRows,
+  loading = false,
+  onCreate,
 }: ModulePageProps) {
   const [rows, setRows] = useState<string[][]>(initialRows);
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState<string[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [formValues, setFormValues] = useState<string[]>([]);
-  const [hasCustomChanges, setHasCustomChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    if (!storageKey) return;
-    try {
-      const saved = window.localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as unknown;
-        if (Array.isArray(parsed)) {
-          setRows(parsed as string[][]);
-          setHasCustomChanges(true);
-        }
-      }
-    } catch {
-      // Ignore malformed cache
-    }
-  }, [storageKey]);
+    setRows(initialRows);
+  }, [initialRows]);
 
   useEffect(() => {
     if (!creating && !selectedRow) return;
@@ -101,6 +93,7 @@ export function ModulePage({
   const pagination = useTablePagination(filteredRows);
 
   function openCreateDialog() {
+    setFormError("");
     const defaults = columns.map(
       (_, index) => createFields?.[index]?.defaultValue ?? "",
     );
@@ -108,59 +101,48 @@ export function ModulePage({
     setCreating(true);
   }
 
-  function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextRow = columns.map((_, index) => formValues[index]?.trim() || "—");
-    const updated = [nextRow, ...rows];
-    setRows(updated);
-    setHasCustomChanges(true);
-    if (storageKey) {
-      try {
-        window.localStorage.setItem(storageKey, JSON.stringify(updated));
-      } catch {
-        // Ignore quota errors
-      }
-    }
-    setCreating(false);
-  }
+    setFormError("");
 
-  function resetDemoRows() {
-    setRows(initialRows);
-    setHasCustomChanges(false);
-    if (storageKey) {
+    if (onCreate) {
+      setSaving(true);
       try {
-        window.localStorage.removeItem(storageKey);
-      } catch {
-        // Ignore storage errors
+        const payload: Record<string, string> = {};
+        columns.forEach((col, index) => {
+          const key = createFields?.[index]?.key || col.toLowerCase().replace(/\s+/g, "_");
+          payload[key] = formValues[index]?.trim() || "";
+        });
+        await onCreate(payload);
+        setCreating(false);
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : "Failed to create entry on server");
+      } finally {
+        setSaving(false);
       }
+    } else {
+      const nextRow = columns.map((_, index) => formValues[index]?.trim() || "—");
+      setRows([nextRow, ...rows]);
+      setCreating(false);
     }
   }
 
   return (
     <section className="container mx-auto px-6 py-8 lg:px-10 lg:py-12">
-      <div className="flex flex-col justify-between gap-5 border-b border-[#dfd8cf] pb-8 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-5 border-b border-border pb-8 sm:flex-row sm:items-end">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a44436]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
             {eyebrow}
           </p>
-          <h1 className="mt-2 font-serif text-4xl text-[#39231e]">{title}</h1>
-          <p className="mt-2 max-w-xl text-sm text-[#776f68]">{description}</p>
+          <h1 className="mt-2 font-serif text-4xl text-primary">{title}</h1>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {hasCustomChanges && (
-            <button
-              type="button"
-              onClick={resetDemoRows}
-              className="inline-flex items-center justify-center gap-2 border border-[#dfd8cf] bg-white px-3 py-3 text-xs text-[#776f68] hover:border-[#8d3428]"
-            >
-              <RotateCcw size={14} /> Reset
-            </button>
-          )}
           {action && (
             <button
               type="button"
               onClick={openCreateDialog}
-              className="inline-flex items-center justify-center gap-2 bg-[#8d3428] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#70281f]"
+              className="inline-flex items-center justify-center gap-2 bg-accent px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-accent/90"
             >
               <Plus size={15} /> {action}
             </button>
@@ -168,9 +150,9 @@ export function ModulePage({
         </div>
       </div>
 
-      <div className="mt-8 overflow-hidden border border-[#dfd8cf] bg-white">
-        <div className="flex flex-col gap-3 border-b border-[#eee8e0] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex items-center gap-2 border border-[#dfd8cf] px-3 py-2 text-sm text-[#a49a90]">
+      <div className="mt-8 overflow-hidden border border-border bg-white">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <label className="flex items-center gap-2 border border-border px-3 py-2 text-sm text-muted-foreground">
             <Search size={15} />
             <span className="sr-only">Search {title.toLowerCase()}</span>
             <input
@@ -181,18 +163,17 @@ export function ModulePage({
                 pagination.setPage(1);
               }}
               placeholder={`Search ${title.toLowerCase()}...`}
-              className="w-full bg-transparent text-sm text-[#39231e] outline-none placeholder:text-[#a49a90] sm:w-64"
+              className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-muted-foreground sm:w-64"
             />
           </label>
-          <span className="text-xs text-[#a49a90]">
-            {filteredRows.length}{" "}
-            {filteredRows.length === 1 ? "record" : "records"}
+          <span className="text-xs text-muted-foreground">
+            {loading ? "Loading..." : `${filteredRows.length} ${filteredRows.length === 1 ? "record" : "records"}`}
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-[#faf7f3] text-[10px] uppercase tracking-[0.12em] text-[#a48668]">
+            <thead className="bg-background text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               <tr>
                 {columns.map((column) => (
                   <th key={column} className="px-5 py-4 font-semibold">
@@ -206,7 +187,7 @@ export function ModulePage({
                 <tr
                   key={`${row[0]}-${index}`}
                   onClick={() => setSelectedRow(row)}
-                  className="cursor-pointer border-t border-[#eee8e0] text-[#5f5750] transition hover:bg-[#faf7f3]"
+                  className="cursor-pointer border-t border-border text-muted-foreground transition hover:bg-background"
                 >
                   {row.map((cell, cellIndex) => {
                     const badgeClass =
@@ -216,7 +197,7 @@ export function ModulePage({
                     return (
                       <td
                         key={cellIndex}
-                        className={`px-5 py-4 ${cellIndex === 0 ? "font-medium text-[#39231e]" : ""}`}
+                        className={`px-5 py-4 ${cellIndex === 0 ? "font-medium text-primary" : ""}`}
                       >
                         {badgeClass ? (
                           <span className={badgeClass}>{cell}</span>
@@ -231,9 +212,14 @@ export function ModulePage({
             </tbody>
           </table>
         </div>
-        {!filteredRows.length && (
-          <p className="p-8 text-center text-sm text-[#77675d]">
-            No records match &ldquo;{search}&rdquo;.
+        {loading && (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            Loading records...
+          </p>
+        )}
+        {!loading && !filteredRows.length && (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            {search ? `No records match "${search}".` : "No records found."}
           </p>
         )}
         <TablePagination
@@ -252,7 +238,7 @@ export function ModulePage({
       {selectedRow && (
         <div
           role="presentation"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#201915]/50 p-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-5"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setSelectedRow(null);
           }}
@@ -261,16 +247,16 @@ export function ModulePage({
             role="dialog"
             aria-modal="true"
             aria-labelledby="module-detail-title"
-            className="w-full max-w-md bg-[#fffdf9] p-6 shadow-xl"
+            className="w-full max-w-md bg-popover p-6 shadow-xl"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#a44436]">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-accent">
                   {title}
                 </p>
                 <h2
                   id="module-detail-title"
-                  className="mt-1 font-serif text-2xl text-[#39231e]"
+                  className="mt-1 font-serif text-2xl text-primary"
                 >
                   {selectedRow[0]}
                 </h2>
@@ -284,14 +270,14 @@ export function ModulePage({
                 <X size={18} />
               </button>
             </div>
-            <dl className="mt-5 divide-y divide-[#eee8e0] border-y border-[#eee8e0]">
+            <dl className="mt-5 divide-y divide-border border-y border-border">
               {columns.map((column, index) => (
                 <div
                   key={column}
                   className="flex justify-between gap-4 py-3 text-sm"
                 >
-                  <dt className="text-[#776f68]">{column}</dt>
-                  <dd className="text-right font-medium text-[#39231e]">
+                  <dt className="text-muted-foreground">{column}</dt>
+                  <dd className="text-right font-medium text-primary">
                     {selectedRow[index] ?? "—"}
                   </dd>
                 </div>
@@ -301,7 +287,7 @@ export function ModulePage({
               <button
                 type="button"
                 onClick={() => setSelectedRow(null)}
-                className="bg-[#39231e] px-5 py-2.5 text-[10px] uppercase tracking-wider text-white"
+                className="bg-primary px-5 py-2.5 text-[10px] uppercase tracking-wider text-white"
               >
                 Done
               </button>
@@ -313,7 +299,7 @@ export function ModulePage({
       {creating && (
         <div
           role="presentation"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#201915]/50 p-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-5"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setCreating(false);
           }}
@@ -322,16 +308,16 @@ export function ModulePage({
             role="dialog"
             aria-modal="true"
             aria-labelledby="module-create-title"
-            className="w-full max-w-md bg-[#fffdf9] p-6 shadow-xl"
+            className="w-full max-w-md bg-popover p-6 shadow-xl"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#a44436]">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-accent">
                   {title}
                 </p>
                 <h2
                   id="module-create-title"
-                  className="mt-1 font-serif text-2xl text-[#39231e]"
+                  className="mt-1 font-serif text-2xl text-primary"
                 >
                   {action}
                 </h2>
@@ -345,6 +331,11 @@ export function ModulePage({
                 <X size={18} />
               </button>
             </div>
+            {formError && (
+              <div className="mt-3 border border-accent/30 bg-accent/10 p-2.5 text-xs text-accent">
+                {formError}
+              </div>
+            )}
             <form
               onSubmit={handleCreateSubmit}
               className="mt-5 flex flex-col gap-4"
@@ -363,7 +354,7 @@ export function ModulePage({
                       )
                     }
                     placeholder={createFields?.[index]?.placeholder ?? column}
-                    className="mt-1.5 w-full border border-[#ded3c7] bg-white px-3 py-2.5 text-sm"
+                    className="mt-1.5 w-full border border-input bg-white px-3 py-2.5 text-sm outline-none focus:border-accent"
                   />
                 </label>
               ))}
@@ -371,15 +362,16 @@ export function ModulePage({
                 <button
                   type="button"
                   onClick={() => setCreating(false)}
-                  className="border border-[#ded3c7] px-4 py-2.5 text-[10px] uppercase tracking-wider"
+                  className="border border-input px-4 py-2.5 text-[10px] uppercase tracking-wider"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#8d3428] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+                  disabled={saving}
+                  className="bg-accent px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-white disabled:opacity-50"
                 >
-                  Save
+                  {saving ? "Saving..." : "Save changes"}
                 </button>
               </div>
             </form>

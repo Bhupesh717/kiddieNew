@@ -1,30 +1,42 @@
 import type { Metadata } from "next";
 import { PageIntro, SiteFooter, SiteHeader } from "@/components/site-shell";
 import { BlogListing } from "@/components/storefront/blog-listing";
-import { getActiveBlogPosts } from "@/src/lib/server/blog-store";
+import type { BlogPost } from "@/src/lib/store/blog";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Blog & Journal",
   description:
-    "Stories from the Majisavesh Jaipur atelier — heritage crafts, Rajputi poshak guides, bridal styling notes, and heirloom textile care.",
+    "Stories from KiddieQuick — kids fashion tips, Indian ethnic wear guides, modern western styling notes, and fabric care.",
 };
 
-export default function BlogPage() {
-  const activePosts = getActiveBlogPosts();
+async function getLiveBlogs(): Promise<BlogPost[]> {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/blogs?status=active", {
+      cache: "no-store",
+    });
+    const payload = await res.json().catch(() => null);
+    if (payload?.success && Array.isArray(payload.data)) {
+      return payload.data;
+    }
+  } catch {}
+  return [];
+}
+
+export default async function BlogPage() {
+  const activePosts = await getLiveBlogs();
 
   return (
-    <main className="min-h-screen bg-[#fbf8f3] text-[#33251f]">
+    <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
       <PageIntro
-        eyebrow="The Majisavesh Journal"
-        title="Stories from the atelier"
-        copy="Heritage craft essays, poshak draping notes, and thoughtful textile care from our karigar studio in Jaipur."
+        eyebrow="The KiddieQuick Journal"
+        title="Stories & Styling Guides"
+        copy="Practical kids fashion tips, festive ethnic wear guides, and thoughtful everyday textile care from KiddieQuick."
       />
       <BlogListing posts={activePosts} />
       <SiteFooter />
     </main>
   );
 }
-

@@ -16,12 +16,4 @@ export type StoreBannerInput = {
   updatedAt?: string;
 };
 
-export const defaultBanners: StoreBanner[] = [
-  {
-    id: "banner-001",
-    image: "/Majisavesh_Banner.png",
-    order: 1,
-    status: "active",
-    updatedAt: "2026-11-11T10:00:00.000Z",
-  },
-];
+export const defaultBanners: StoreBanner[] = [];

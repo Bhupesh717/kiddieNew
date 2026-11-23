@@ -21,23 +21,24 @@ export type BlogPostInput = Omit<BlogPost, "id" | "updatedAt"> & {
   updatedAt?: string;
 };
 
-export const BLOG_STORAGE_KEY = "majisavesh_blogs_v1";
+export const BLOG_STORAGE_KEY = "kiddiequick_blogs_v1";
 
 export const BLOG_CATEGORIES = [
-  "Heritage Craft",
-  "Bridal Guide",
+  "Kids Fashion",
+  "Festive Ethnic",
+  "Western Style Notes",
   "Style Notes",
   "Textile Archive",
-  "Atelier Stories",
+  "Studio Stories",
 ] as const;
 
 export const AVAILABLE_BLOG_IMAGES = [
-  { label: "Heritage Maroon Poshak", value: "/hero-ethnic-wear.png" },
-  { label: "Teal Velvet Poshak", value: "/products/teal-poshak.png" },
+  { label: "Festive Maroon Ensemble", value: "/hero-ethnic-wear.png" },
+  { label: "Teal Velvet Kurti Set", value: "/products/teal-poshak.png" },
   { label: "Mustard Zari Suit", value: "/products/mustard-poshak.png" },
   { label: "Mogra Rose Silk", value: "/products/rose-silk.png" },
   { label: "Kundan Rani Haar", value: "/products/kundan-haar.png" },
-  { label: "Majisavesh Royal Banner", value: "/Majisavesh_Banner.png" },
+  { label: "KiddieQuick Banner", value: "/Majisavesh_Banner.png" },
 ] as const;
 
 export function slugifyBlogTitle(input: string): string {
@@ -232,100 +233,5 @@ export function normalizeRichContentInput(raw: string): string {
     .join("\n");
 }
 
-export const defaultBlogPosts: BlogPost[] = [
-  {
-    id: "blog-001",
-    slug: "art-of-rajputi-poshak",
-    title: "The Art of Rajputi Poshak: Craft, Gota Patti & Royal Silhouette",
-    excerpt:
-      "Inside the four-piece drape that defines ceremonial dressing in Rajasthan — and how our Jaipur karigars preserve hand-stitched zari borders for modern celebrations.",
-    category: "Heritage Craft",
-    author: "Aditi Rathore",
-    publishedAt: "2026-10-18",
-    readTime: "4 min read",
-    coverImage: "/hero-ethnic-wear.png",
-    coverImageAlt: "Bride wearing deep maroon Rajputi Poshak with hand-embroidered gold zari under sandstone palace arches",
-    status: "active",
-    updatedAt: "2026-10-18T10:30:00.000Z",
-    contentHtml: `<p>Every heirloom <strong>Rajputi Poshak</strong> begins long before a single stitch meets silk. In the courtyards of Jaipur and Bikaner, master pattern-makers measure drape movement first — ensuring the <em>ghagra</em> swirls effortlessly while the <em>odhni</em> frames the face with quiet grace.</p>
-<h2>Anatomy of the Four-Piece Ensemble</h2>
-<p>Unlike conventional lehengas, a traditional poshak is composed of four balanced layers that create an unmistakable regal silhouette:</p>
-<ul>
-<li><strong>Kanchali &amp; Kurti:</strong> A tailored cropped bodice layered beneath a sheer or embroidered hip-length tunic with crisp side slits.</li>
-<li><strong>Kalidar Ghagra:</strong> Twenty or more panelled pleats sewn to drape vertically without unnecessary bulk.</li>
-<li><strong>Odhni:</strong> A hand-finished veil weighted along the borders with pure <em>zari</em> and <em>gota patti</em> motifs so it rests effortlessly over the head and shoulder.</li>
-</ul>
-<figure><img src="/products/mustard-poshak.png" alt="Mustard zari embroidered suit photographed in a Rajasthan heritage courtyard" /><figcaption>Fine gold danka and kasab embroidery catching late-afternoon light in our Jaipur atelier.</figcaption></figure>
-<blockquote>“When gold thread is beaten patiently by hand, it does not shout in candlelight — it glows like old sandstone at dusk.”</blockquote>
-<h3>Choosing Pure vs. Semi-Pure Fabrics</h3>
-<p>Pure georgette and silk satin fall with liquid weight and accept denser <em>kardhana</em> or antique zari handwork, making them ideal for pheras and reception evenings. Semi-pure weaves keep the silhouette crisp while offering lighter day-long comfort for sangeet mornings and intimate pujas.</p>`,
-  },
-  {
-    id: "blog-002",
-    slug: "jaipur-winter-wedding-layering",
-    title: "Dressing for Jaipur Winter Weddings: Velvet, Silk & Kundan Notes",
-    excerpt:
-      "How to pair jewel-toned velvet kurti sets with heirloom Kundan jewellery and organza odhnis for crisp desert evenings.",
-    category: "Bridal Guide",
-    author: "Meera Shekhawat",
-    publishedAt: "2026-10-12",
-    readTime: "3 min read",
-    coverImage: "/products/teal-poshak.png",
-    coverImageAlt: "Emerald teal velvet kurti set with gold gota borders under carved palace arch",
-    status: "active",
-    updatedAt: "2026-10-12T09:15:00.000Z",
-    contentHtml: `<p>Once November settles over Rajasthan, sunlit palace lawns cool rapidly after sunset. Deep-pile micro-velvets in emerald teal, sindoor maroon, and burnished ochre become the season&apos;s most practical luxury.</p>
-<h2>Balancing Texture and Jewellery</h2>
-<p>Velvet carries natural warmth and visual richness, so restrained ornamentation always looks more poised than heavy embellishment across every inch.</p>
-<figure><img src="/products/kundan-haar.png" alt="Handcrafted Kundan Rani Haar with ruby beads and pearls on raw silk cloth" /><figcaption>A Polki-inspired Kundan haar layered with freshwater pearls completes open velvet necklines.</figcaption></figure>
-<h3>Three Styling Rules for Evening Phere</h3>
-<ol>
-<li>Pair matte velvet tunics with sheer organza or pure tissue odhnis to keep the upper frame luminous.</li>
-<li>Anchor the neckline with one statement <strong>Kundan rani haar</strong> and matching borla instead of crowding multiple chokers.</li>
-<li>Choose hand-embroidered leather juttis in muted champagne gold for comfort across stone courtyards.</li>
-</ol>`,
-  },
-  {
-    id: "blog-003",
-    slug: "care-for-handloom-silk-zari",
-    title: "Heirloom Care: Preserving Handloom Silk & Antique Zari Across Generations",
-    excerpt:
-      "Simple muslin folding rituals, natural neem storage, and moisture rules that keep pure silk poshaks vibrant for decades.",
-    category: "Textile Archive",
-    author: "Aditi Rathore",
-    publishedAt: "2026-10-04",
-    readTime: "3 min read",
-    coverImage: "/products/rose-silk.png",
-    coverImageAlt: "Draped rose silk textile with woven gold zari border",
-    status: "active",
-    updatedAt: "2026-10-04T14:20:00.000Z",
-    contentHtml: `<p>Authentic silk and metallic zari are living materials. With attentive storage, a ceremonial weave doesn&apos;t age out — it softens and gains character with every family milestone.</p>
-<h2>The Muslin Folding Ritual</h2>
-<p>Avoid plastic garment covers, which trap humidity and gradually dull real silver-gold threads. Wrap each ensemble separately in unbleached breathable cotton <em>malmal</em>.</p>
-<ul>
-<li>Refold silk garments every four months along fresh creases to prevent permanent stress lines along zari borders.</li>
-<li>Air garments briefly in indirect shade after celebrations before packing away.</li>
-<li>Never spray perfume directly onto silk fibres or metallic embroidery.</li>
-</ul>
-<p>Need restoration or custom finishing on a Majisavesh piece? Our Jaipur studio welcomes care consultations year-round.</p>`,
-  },
-  {
-    id: "blog-004",
-    slug: "upcoming-festive-loom-preview",
-    title: "Behind the Festive Looms: Preview of Our Winter Bridal Edit",
-    excerpt:
-      "An early archive draft featuring natural madder-dyed silks, antique gota trims, and upcoming bespoke bridal appointments.",
-    category: "Atelier Stories",
-    author: "Rohan Kachhawaha",
-    publishedAt: "2026-10-20",
-    readTime: "2 min read",
-    coverImage: "/Majisavesh_Banner.png",
-    coverImageAlt: "Majisavesh winter bridal showcase preview",
-    status: "inactive",
-    updatedAt: "2026-10-20T16:00:00.000Z",
-    contentHtml: `<p>This preview note is currently queued in draft inside Atelier Admin while final photography from the Pushkar looms arrives.</p>
-<h2>What Awaits in the Edit</h2>
-<p>Expect rich sindoor reds, gossamer pure odhnis, and hand-worked zardozi motifs inspired by 19th-century palace frescoes.</p>`,
-  },
-];
+export const defaultBlogPosts: BlogPost[] = [];
 

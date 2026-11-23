@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Loader2, LockKeyhole, MapPinCheck, Tag } from "lucide-react";
 import {
@@ -19,6 +20,11 @@ import {
 import { BlogCoverImage } from "@/components/storefront/blog-cover-image";
 import { useCart, type CartItem } from "@/components/storefront/cart-provider";
 import { PageIntro, SiteFooter, SiteHeader } from "@/components/site-shell";
+import {
+  getCustomerToken,
+  getCustomerUser,
+  getCustomerAuthHeaders,
+} from "@/src/lib/api/customer-auth";
 
 type IndianStateOption = {
   code: string;
@@ -39,9 +45,43 @@ type CompletedOrder = {
   total: number;
 };
 
-export default function CheckoutPage() {
+function CheckoutForm() {
+  const searchParams = useSearchParams();
+  const isBuyNow = searchParams.get("buyNow") === "1";
   const { items, selectedTotal, clearSelectedItems } = useCart();
-  const selectedItems = items.filter((item) => item.selected);
+  const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
+
+  useEffect(() => {
+    if (isBuyNow) {
+      try {
+        const stored = window.sessionStorage.getItem("kiddiequick_buynow_item");
+        if (stored) {
+          const parsed = JSON.parse(stored) as CartItem;
+          if (parsed && parsed.product) {
+            setBuyNowItem(parsed);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [isBuyNow]);
+
+  const activeItems: CartItem[] = useMemo(() => {
+    if (isBuyNow && buyNowItem) {
+      return [buyNowItem];
+    }
+    return items.filter((item) => item.selected);
+  }, [isBuyNow, buyNowItem, items]);
+
+  const activeSubtotal: number = useMemo(() => {
+    if (isBuyNow && buyNowItem) {
+      return (
+        (buyNowItem.unitPrice || buyNowItem.product.price) * buyNowItem.quantity
+      );
+    }
+    return selectedTotal;
+  }, [isBuyNow, buyNowItem, selectedTotal]);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -60,6 +100,9 @@ export default function CheckoutPage() {
   const [lookingUpPin, setLookingUpPin] = useState(false);
   const [pinVerifiedInfo, setPinVerifiedInfo] = useState("");
   const [pinLookupError, setPinLookupError] = useState("");
+  const [serverOrderError, setServerOrderError] = useState("");
+  const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [validatingPromo, setValidatingPromo] = useState(false);
 
   const [fieldErrors, setFieldErrors] = useState<CheckoutFieldErrors>({});
 
@@ -93,6 +136,61 @@ export default function CheckoutPage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Auto-prefill details if logged in as customer
+  useEffect(() => {
+    const user = getCustomerUser();
+    if (user) {
+      if (user.name) setFullName((prev) => prev || user.name);
+      if (user.email) setEmail((prev) => prev || user.email);
+      if (user.phone) setPhone((prev) => prev || user.phone || "");
+
+      const token = getCustomerToken();
+      if (token) {
+        fetch("/api/users/me/addresses", {
+          headers: getCustomerAuthHeaders(),
+        })
+          .then((r) => r.json())
+          .then((res) => {
+            if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+              type ServerAddress = {
+                id: string | number;
+                addressLine?: string;
+                city?: string;
+                stateName?: string;
+                stateCode?: string;
+                pincode?: string;
+                phone?: string;
+                isDefault?: boolean;
+              };
+              const addrs = res.data as ServerAddress[];
+              const defaultAddr = addrs.find((a) => a.isDefault) || addrs[0];
+              if (defaultAddr) {
+                if (defaultAddr.addressLine) {
+                  setAddress((prev) => prev || defaultAddr.addressLine || "");
+                }
+                if (defaultAddr.city) {
+                  setCity((prev) => prev || defaultAddr.city || "");
+                }
+                if (defaultAddr.stateName) {
+                  setStateName((prev) => prev || defaultAddr.stateName || "");
+                }
+                if (defaultAddr.stateCode) {
+                  setStateCode((prev) => prev || defaultAddr.stateCode || "");
+                }
+                if (defaultAddr.pincode) {
+                  setPinCode((prev) => prev || defaultAddr.pincode || "");
+                }
+                if (defaultAddr.phone) {
+                  setPhone((prev) => prev || defaultAddr.phone || "");
+                }
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -240,48 +338,76 @@ export default function CheckoutPage() {
     }));
   }
 
-  const discount = computePromoDiscount(selectedTotal, appliedPromo);
-  const discountedSubtotal = Math.max(0, selectedTotal - discount);
+  const discount = computePromoDiscount(activeSubtotal, appliedPromo);
+  const discountedSubtotal = Math.max(0, activeSubtotal - discount);
   const shippingFee =
-    selectedTotal === 0 || discountedSubtotal >= FREE_SHIPPING_THRESHOLD
+    activeSubtotal === 0 || discountedSubtotal >= FREE_SHIPPING_THRESHOLD
       ? 0
       : STANDARD_SHIPPING_FEE;
   const grandTotal = discountedSubtotal + shippingFee;
 
-  function applyPromoCode() {
+  async function applyPromoCode() {
     const normalized = promoInput.trim().toUpperCase();
     if (!normalized) {
       setAppliedPromo(null);
       setPromoFeedback(null);
       return;
     }
-    const found = DEMO_PROMO_CODES.find((rule) => rule.code === normalized);
-    if (!found) {
-      setAppliedPromo(null);
+
+    setValidatingPromo(true);
+    setPromoFeedback(null);
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          code: normalized,
+          subtotal: activeSubtotal,
+          cartTotal: activeSubtotal,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success || !payload.data?.valid) {
+        setAppliedPromo(null);
+        setPromoFeedback({
+          ok: false,
+          message:
+            payload?.error?.message ??
+            "Code not valid or expired. Try WELCOME10 or FESTIVE25.",
+        });
+        return;
+      }
+
+      const coupon = payload.data;
+      setAppliedPromo({
+        code: coupon.code,
+        type: coupon.discountType === "fixed" ? "fixed" : "percentage",
+        value: coupon.discountValue,
+        label: coupon.label || `${coupon.discountValue}% off offer`,
+        active: true,
+      });
+      setPromoFeedback({
+        ok: true,
+        message: coupon.message || `Applied ${coupon.code} successfully!`,
+      });
+    } catch {
       setPromoFeedback({
         ok: false,
-        message: "Code not found. Try WELCOME10 or FESTIVE25.",
+        message: "Unable to validate coupon with server right now.",
       });
-      return;
+    } finally {
+      setValidatingPromo(false);
     }
-    if (!found.active) {
-      setAppliedPromo(null);
-      setPromoFeedback({
-        ok: false,
-        message: `${found.code} has expired. Try WELCOME10 or FESTIVE25.`,
-      });
-      return;
-    }
-    setAppliedPromo(found);
-    setPromoFeedback({
-      ok: true,
-      message: `Applied ${found.code} (${found.label}).`,
-    });
   }
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedItems.length) return;
+    if (!activeItems.length) return;
+    setServerOrderError("");
 
     const parsed = checkoutFormSchema.safeParse({
       fullName,
@@ -345,34 +471,99 @@ export default function CheckoutPage() {
       }
     }
 
-    const orderNumber = `MV-${String(Date.now()).slice(-6)}`;
-    setCompletedOrder({
-      reference: orderNumber,
-      customerName: parsed.data.fullName,
-      city: parsed.data.city,
-      stateName: parsed.data.stateName,
-      pinCode: parsed.data.pinCode,
-      paymentMethod,
-      items: selectedItems,
-      subtotal: selectedTotal,
-      discount,
-      shipping: shippingFee,
-      total: grandTotal,
-    });
-    clearSelectedItems();
+    setSubmittingOrder(true);
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: getCustomerAuthHeaders(),
+        body: JSON.stringify({
+          fullName: parsed.data.fullName,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+          address: parsed.data.address,
+          city: parsed.data.city,
+          stateCode: parsed.data.stateCode,
+          stateName: parsed.data.stateName,
+          pinCode: parsed.data.pinCode,
+          paymentMethod,
+          promoCode: appliedPromo?.code,
+          items: activeItems.map((item) => ({
+            id: item.product.id,
+            name: item.product.name,
+            price: item.unitPrice ?? item.product.price,
+            quantity: item.quantity,
+            size: item.size,
+            color: item.color || "Standard",
+            sku: item.sku,
+            variant_id: item.variantId,
+            image: item.product.image,
+          })),
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success || !payload.data) {
+        if (payload?.error?.fieldErrors) {
+          const mappedErrors: CheckoutFieldErrors = {};
+          for (const [k, msgs] of Object.entries(payload.error.fieldErrors)) {
+            if (Array.isArray(msgs) && msgs.length > 0) {
+              mappedErrors[k as CheckoutFieldName] = msgs[0] as string;
+            }
+          }
+          setFieldErrors((prev) => ({ ...prev, ...mappedErrors }));
+        }
+        setServerOrderError(
+          payload?.error?.message ?? "Failed to place order.",
+        );
+        return;
+      }
+
+      const order = payload.data;
+      setCompletedOrder({
+        reference: order.reference || `MV-${order.id}`,
+        customerName: order.customerName,
+        city: order.city,
+        stateName: order.stateName,
+        pinCode: order.pinCode,
+        paymentMethod: order.paymentMethod,
+        items: activeItems,
+        subtotal: order.subtotal,
+        discount: order.discount,
+        shipping: order.shipping,
+        total: order.total,
+      });
+      if (isBuyNow) {
+        try {
+          window.sessionStorage.removeItem("kiddiequick_buynow_item");
+        } catch {
+          // ignore
+        }
+      } else {
+        clearSelectedItems();
+      }
+    } catch (err) {
+      setServerOrderError(
+        err instanceof Error
+          ? err.message
+          : "Unable to place order. Please try again.",
+      );
+    } finally {
+      setSubmittingOrder(false);
+    }
   }
 
   function inputBorderClass(hasError?: string) {
     return hasError
-      ? "border-[#a44436] bg-[#fdf7f6]"
-      : "border-[#ded3c7] bg-white focus:border-[#39231e]";
+      ? "border-accent bg-accent/10"
+      : "border-input bg-white focus:border-primary";
   }
 
   return (
-    <main className="min-h-screen bg-[#fbf8f3] text-[#33251f]">
+    <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
       <PageIntro
-        eyebrow="Majisavesh · Checkout preview"
+        eyebrow="KiddieQuick · Checkout preview"
         title={completedOrder ? "Thank you" : "A few details"}
         copy={
           completedOrder
@@ -382,18 +573,18 @@ export default function CheckoutPage() {
       />
       <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
         {completedOrder ? (
-          <section className="mx-auto max-w-3xl border border-[#e8ded2] bg-white p-7 sm:p-10">
+          <section className="mx-auto max-w-3xl border border-border bg-white p-7 sm:p-10">
             <div className="text-center">
-              <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#e8f4ec] text-[#168252]">
+              <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-success/10 text-success">
                 <Check />
               </span>
-              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#a44436]">
+              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
                 Order reference #{completedOrder.reference}
               </p>
               <h2 className="mt-2 font-serif text-3xl">
                 Thank you, {completedOrder.customerName}
               </h2>
-              <p className="mt-2 text-sm text-[#77675d]">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Preview order prepared for {completedOrder.city},{" "}
                 {completedOrder.stateName} – {completedOrder.pinCode} (
                 {completedOrder.paymentMethod}). Checkout payments and backend
@@ -401,8 +592,8 @@ export default function CheckoutPage() {
               </p>
             </div>
 
-            <div className="mt-8 border-t border-[#eee8e0] pt-6">
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8b796b]">
+            <div className="mt-8 border-t border-border pt-6">
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Items in your preview
               </h3>
               <div className="mt-4 space-y-3">
@@ -413,7 +604,7 @@ export default function CheckoutPage() {
                   >
                     <span>
                       {product.name}{" "}
-                      <span className="text-xs text-[#77675d]">
+                      <span className="text-xs text-muted-foreground">
                         (Qty {quantity})
                       </span>
                     </span>
@@ -421,13 +612,13 @@ export default function CheckoutPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 space-y-2 border-t border-[#eee8e0] pt-4 text-xs text-[#77675d]">
+              <div className="mt-4 space-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
                   <span>{formatPrice(completedOrder.subtotal)}</span>
                 </div>
                 {completedOrder.discount > 0 && (
-                  <div className="flex justify-between text-[#168252]">
+                  <div className="flex justify-between text-success">
                     <span>Promo savings</span>
                     <span>−{formatPrice(completedOrder.discount)}</span>
                   </div>
@@ -440,7 +631,7 @@ export default function CheckoutPage() {
                       : formatPrice(completedOrder.shipping)}
                   </span>
                 </div>
-                <div className="flex justify-between border-t border-[#eee8e0] pt-2 text-sm font-semibold text-[#33251f]">
+                <div className="flex justify-between border-t border-border pt-2 text-sm font-semibold text-foreground">
                   <span>Total</span>
                   <span>{formatPrice(completedOrder.total)}</span>
                 </div>
@@ -450,28 +641,28 @@ export default function CheckoutPage() {
             <div className="mt-8 text-center">
               <Link
                 href="/collection"
-                className="inline-block bg-[#39231e] px-6 py-3 text-[10px] uppercase tracking-[0.18em] text-white transition hover:bg-[#52342c]"
+                className="inline-block bg-primary px-6 py-3 text-[10px] uppercase tracking-[0.18em] text-white transition hover:bg-primary/90"
               >
                 Continue shopping
               </Link>
             </div>
           </section>
-        ) : selectedItems.length ? (
+        ) : activeItems.length ? (
           <form
             noValidate
             onSubmit={submitOrder}
             className="grid gap-8 lg:grid-cols-[1fr_360px]"
           >
-            <section className="border border-[#e8ded2] bg-white p-5 sm:p-7">
-              <div className="flex items-center gap-2 border-b border-[#eee8e0] pb-4">
-                <span className="flex size-7 items-center justify-center rounded-full bg-[#39231e] text-xs text-white">
+            <section className="border border-border bg-white p-5 sm:p-7">
+              <div className="flex items-center gap-2 border-b border-border pb-4">
+                <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs text-white">
                   1
                 </span>
                 <h2 className="font-serif text-2xl">Delivery information</h2>
               </div>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <label className="text-xs font-medium text-[#4b3c33]">
+                <label className="text-xs font-medium text-foreground/90">
                   Full name *
                   <input
                     required
@@ -486,20 +677,20 @@ export default function CheckoutPage() {
                       }
                     }}
                     onBlur={() => validateSingleField("fullName")}
-                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-[#33251f] outline-none ${inputBorderClass(fieldErrors.fullName)}`}
+                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-foreground outline-none ${inputBorderClass(fieldErrors.fullName)}`}
                     placeholder="Your full name"
                   />
                   {fieldErrors.fullName && (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-[11px] font-normal text-[#a44436]"
+                      className="mt-1.5 block text-[11px] font-normal text-accent"
                     >
                       {fieldErrors.fullName}
                     </span>
                   )}
                 </label>
 
-                <label className="text-xs font-medium text-[#4b3c33]">
+                <label className="text-xs font-medium text-foreground/90">
                   Email address *
                   <input
                     required
@@ -515,20 +706,20 @@ export default function CheckoutPage() {
                       }
                     }}
                     onBlur={() => validateSingleField("email")}
-                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-[#33251f] outline-none ${inputBorderClass(fieldErrors.email)}`}
+                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-foreground outline-none ${inputBorderClass(fieldErrors.email)}`}
                     placeholder="you@example.com"
                   />
                   {fieldErrors.email && (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-[11px] font-normal text-[#a44436]"
+                      className="mt-1.5 block text-[11px] font-normal text-accent"
                     >
                       {fieldErrors.email}
                     </span>
                   )}
                 </label>
 
-                <label className="text-xs font-medium text-[#4b3c33] sm:col-span-2">
+                <label className="text-xs font-medium text-foreground/90 sm:col-span-2">
                   Address *
                   <input
                     required
@@ -543,20 +734,20 @@ export default function CheckoutPage() {
                       }
                     }}
                     onBlur={() => validateSingleField("address")}
-                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-[#33251f] outline-none ${inputBorderClass(fieldErrors.address)}`}
+                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-foreground outline-none ${inputBorderClass(fieldErrors.address)}`}
                     placeholder="House / flat number, building and street"
                   />
                   {fieldErrors.address && (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-[11px] font-normal text-[#a44436]"
+                      className="mt-1.5 block text-[11px] font-normal text-accent"
                     >
                       {fieldErrors.address}
                     </span>
                   )}
                 </label>
 
-                <label className="text-xs font-medium text-[#4b3c33]">
+                <label className="text-xs font-medium text-foreground/90">
                   PIN code *
                   <div className="relative mt-2">
                     <input
@@ -578,35 +769,35 @@ export default function CheckoutPage() {
                         }
                       }}
                       onBlur={() => validateSingleField("pinCode")}
-                      className={`w-full border px-3 py-3 pr-9 text-sm font-normal text-[#33251f] outline-none ${inputBorderClass(fieldErrors.pinCode || pinLookupError)}`}
+                      className={`w-full border px-3 py-3 pr-9 text-sm font-normal text-foreground outline-none ${inputBorderClass(fieldErrors.pinCode || pinLookupError)}`}
                       placeholder="6-digit PIN (e.g. 302001)"
                     />
                     {lookingUpPin && (
                       <Loader2
                         size={15}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[#8d3428]"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-accent"
                       />
                     )}
                   </div>
                   {pinLookupError || fieldErrors.pinCode ? (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-[11px] font-normal text-[#a44436]"
+                      className="mt-1.5 block text-[11px] font-normal text-accent"
                     >
                       {pinLookupError || fieldErrors.pinCode}
                     </span>
                   ) : pinVerifiedInfo ? (
-                    <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-normal text-[#168252]">
+                    <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-normal text-success">
                       <MapPinCheck size={12} /> {pinVerifiedInfo}
                     </span>
                   ) : (
-                    <span className="mt-1.5 block text-[11px] font-normal text-[#8b796b]">
+                    <span className="mt-1.5 block text-[11px] font-normal text-muted-foreground">
                       Enter 6-digit PIN to auto-fill State &amp; City
                     </span>
                   )}
                 </label>
 
-                <label className="text-xs font-medium text-[#4b3c33]">
+                <label className="text-xs font-medium text-foreground/90">
                   State *
                   <select
                     required
@@ -615,7 +806,7 @@ export default function CheckoutPage() {
                     aria-invalid={Boolean(fieldErrors.stateCode)}
                     onChange={(event) => handleStateChange(event.target.value)}
                     onBlur={() => validateSingleField("stateCode")}
-                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-[#33251f] outline-none ${inputBorderClass(fieldErrors.stateCode)}`}
+                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-foreground outline-none ${inputBorderClass(fieldErrors.stateCode)}`}
                   >
                     <option value="">Select state</option>
                     {states.map((item) => (
@@ -627,14 +818,14 @@ export default function CheckoutPage() {
                   {fieldErrors.stateCode && (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-[11px] font-normal text-[#a44436]"
+                      className="mt-1.5 block text-[11px] font-normal text-accent"
                     >
                       {fieldErrors.stateCode}
                     </span>
                   )}
                 </label>
 
-                <label className="text-xs font-medium text-[#4b3c33]">
+                <label className="text-xs font-medium text-foreground/90">
                   City *
                   <select
                     required
@@ -648,7 +839,7 @@ export default function CheckoutPage() {
                       validateSingleField("city", next);
                     }}
                     onBlur={() => validateSingleField("city")}
-                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-[#33251f] outline-none disabled:cursor-not-allowed disabled:bg-[#faf7f3] disabled:text-[#8b796b] ${inputBorderClass(fieldErrors.city)}`}
+                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-foreground outline-none disabled:cursor-not-allowed disabled:bg-background disabled:text-muted-foreground ${inputBorderClass(fieldErrors.city)}`}
                   >
                     <option value="">
                       {!stateCode
@@ -666,14 +857,14 @@ export default function CheckoutPage() {
                   {fieldErrors.city && (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-[11px] font-normal text-[#a44436]"
+                      className="mt-1.5 block text-[11px] font-normal text-accent"
                     >
                       {fieldErrors.city}
                     </span>
                   )}
                 </label>
 
-                <label className="text-xs font-medium text-[#4b3c33]">
+                <label className="text-xs font-medium text-foreground/90">
                   Phone number *
                   <input
                     required
@@ -694,26 +885,26 @@ export default function CheckoutPage() {
                       }
                     }}
                     onBlur={() => validateSingleField("phone")}
-                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-[#33251f] outline-none ${inputBorderClass(fieldErrors.phone)}`}
+                    className={`mt-2 w-full border px-3 py-3 text-sm font-normal text-foreground outline-none ${inputBorderClass(fieldErrors.phone)}`}
                     placeholder="+91 98765 43210"
                   />
                   {fieldErrors.phone ? (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-[11px] font-normal text-[#a44436]"
+                      className="mt-1.5 block text-[11px] font-normal text-accent"
                     >
                       {fieldErrors.phone}
                     </span>
                   ) : (
-                    <span className="mt-1.5 block text-[11px] font-normal text-[#8b796b]">
+                    <span className="mt-1.5 block text-[11px] font-normal text-muted-foreground">
                       10-digit Indian mobile number for courier updates
                     </span>
                   )}
                 </label>
               </div>
 
-              <div className="mt-8 flex items-center gap-2 border-b border-[#eee8e0] pb-4">
-                <span className="flex size-7 items-center justify-center rounded-full bg-[#39231e] text-xs text-white">
+              <div className="mt-8 flex items-center gap-2 border-b border-border pb-4">
+                <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs text-white">
                   2
                 </span>
                 <h2 className="font-serif text-2xl">Payment method</h2>
@@ -725,8 +916,8 @@ export default function CheckoutPage() {
                       key={option}
                       className={`flex cursor-pointer items-center gap-2 border px-3 py-3 text-xs transition ${
                         paymentMethod === option
-                          ? "border-[#39231e] bg-[#fbf8f3] font-medium"
-                          : "border-[#ded3c7]"
+                          ? "border-primary bg-background font-medium"
+                          : "border-input"
                       }`}
                     >
                       <input
@@ -735,7 +926,7 @@ export default function CheckoutPage() {
                         value={option}
                         checked={paymentMethod === option}
                         onChange={() => setPaymentMethod(option)}
-                        className="accent-[#8d3428]"
+                        className="accent-accent"
                       />
                       {option}
                     </label>
@@ -743,7 +934,7 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              <div className="mt-6 flex gap-3 border-t border-[#eee8e0] pt-5 text-xs leading-5 text-[#77675d]">
+              <div className="mt-6 flex gap-3 border-t border-border pt-5 text-xs leading-5 text-muted-foreground">
                 <LockKeyhole size={15} className="mt-0.5 shrink-0" />
                 <p>
                   Checkout is in demo mode. No payment details are requested or
@@ -752,34 +943,61 @@ export default function CheckoutPage() {
               </div>
             </section>
 
-            <aside className="h-fit border border-[#e8ded2] bg-white p-5">
-              <h2 className="font-serif text-xl">Your order</h2>
+            <aside className="h-fit border border-border bg-white p-5">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h2 className="font-serif text-xl">Your order</h2>
+                {isBuyNow && (
+                  <span className="rounded bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                    Buy Now
+                  </span>
+                )}
+              </div>
               <div className="mt-4 flex flex-col gap-4">
-                {selectedItems.map(({ lineKey, product, quantity }) => (
-                  <div key={lineKey} className="flex gap-3">
-                    <div className="relative size-14 shrink-0 overflow-hidden bg-[#eee4d8]">
-                      <BlogCoverImage
-                        src={product.image}
-                        alt={product.name}
-                        sizes="56px"
-                        className="object-cover"
-                      />
+                {activeItems.map(
+                  ({
+                    lineKey,
+                    product,
+                    size,
+                    color,
+                    sku,
+                    unitPrice,
+                    quantity,
+                  }) => (
+                    <div key={lineKey} className="flex gap-3">
+                      <div className="relative size-14 shrink-0 overflow-hidden bg-secondary">
+                        <BlogCoverImage
+                          src={product.image}
+                          alt={product.name}
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-serif text-sm font-medium text-primary">
+                          {product.name}
+                        </p>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                          {color && (
+                            <span className="font-medium text-primary">
+                              {color}
+                            </span>
+                          )}
+                          {size && size !== "standard" && (
+                            <span>· Size: {size}</span>
+                          )}
+                          <span>· Qty {quantity}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-accent">
+                        {formatPrice((unitPrice || product.price) * quantity)}
+                      </span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-serif text-sm">{product.name}</p>
-                      <p className="text-[10px] text-[#77675d]">
-                        {product.fabric} · Qty {quantity}
-                      </p>
-                    </div>
-                    <span className="text-xs">
-                      {formatPrice(product.price * quantity)}
-                    </span>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
 
-              <div className="mt-5 border-t border-[#eee8e0] pt-4">
-                <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77675d]">
+              <div className="mt-5 border-t border-border pt-4">
+                <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   <Tag size={12} /> Promo code
                 </label>
                 <div className="mt-2 flex gap-2">
@@ -787,20 +1005,21 @@ export default function CheckoutPage() {
                     value={promoInput}
                     onChange={(event) => setPromoInput(event.target.value)}
                     placeholder="WELCOME10"
-                    className="min-w-0 flex-1 border border-[#ded3c7] px-3 py-2 text-xs uppercase"
+                    className="min-w-0 flex-1 border border-input px-3 py-2 text-xs uppercase"
                   />
                   <button
                     type="button"
+                    disabled={validatingPromo}
                     onClick={applyPromoCode}
-                    className="border border-[#39231e] px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#39231e] hover:bg-[#f3ece2]"
+                    className="border border-primary px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-primary hover:bg-secondary disabled:opacity-50"
                   >
-                    Apply
+                    {validatingPromo ? "..." : "Apply"}
                   </button>
                 </div>
                 {promoFeedback && (
                   <p
                     className={`mt-2 text-[11px] ${
-                      promoFeedback.ok ? "text-[#168252]" : "text-[#a44436]"
+                      promoFeedback.ok ? "text-success" : "text-accent"
                     }`}
                   >
                     {promoFeedback.message}
@@ -808,47 +1027,67 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              <div className="mt-5 flex justify-between border-t border-[#eee8e0] pt-4 text-sm">
+              <div className="mt-5 flex justify-between border-t border-border pt-4 text-sm">
                 <span>Subtotal</span>
-                <strong>{formatPrice(selectedTotal)}</strong>
+                <strong>{formatPrice(activeSubtotal)}</strong>
               </div>
               {discount > 0 && (
-                <div className="mt-2 flex justify-between text-xs text-[#168252]">
+                <div className="mt-2 flex justify-between text-xs text-success">
                   <span>Discount ({appliedPromo?.code})</span>
                   <span>−{formatPrice(discount)}</span>
                 </div>
               )}
-              <p className="mt-2 flex justify-between text-xs text-[#77675d]">
+              <p className="mt-2 flex justify-between text-xs text-muted-foreground">
                 <span>Shipping</span>
                 <span>
                   {shippingFee === 0 ? "Free" : formatPrice(shippingFee)}
                 </span>
               </p>
-              <div className="mt-4 flex justify-between border-t border-[#eee8e0] pt-4">
+              <div className="mt-4 flex justify-between border-t border-border pt-4">
                 <span className="font-semibold">Total</span>
                 <strong>{formatPrice(grandTotal)}</strong>
               </div>
+
+              {serverOrderError && (
+                <div
+                  role="alert"
+                  className="mt-4 border border-accent/30 bg-accent/10 p-3 text-xs leading-5 text-accent"
+                >
+                  {serverOrderError}
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={lookingUpPin}
-                className="mt-5 w-full bg-[#39231e] py-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-[#52342c] disabled:opacity-50"
+                disabled={lookingUpPin || submittingOrder}
+                className="mt-5 w-full bg-primary py-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-primary/90 disabled:opacity-50"
               >
-                {lookingUpPin ? "Verifying PIN..." : "Review demo order"}
+                {submittingOrder
+                  ? "Placing order..."
+                  : lookingUpPin
+                    ? "Verifying PIN..."
+                    : isBuyNow
+                      ? `Complete Buy Now · ${formatPrice(grandTotal)}`
+                      : `Place order · ${formatPrice(grandTotal)}`}
               </button>
-              <p className="mt-3 text-center text-[9px] leading-4 text-[#8b796b]">
-                No real order or payment will be created.
+              <p className="mt-3 text-center text-[9px] leading-4 text-muted-foreground">
+                Authentic handcrafted pieces · Insured pan-India dispatch
               </p>
             </aside>
           </form>
         ) : (
-          <div className="mx-auto max-w-3xl border border-dashed border-[#d8cabc] bg-white p-8 text-center">
-            <h2 className="font-serif text-2xl">Your cart is empty</h2>
-            <p className="mt-2 text-sm text-[#77675d]">
-              Add an item before continuing to checkout.
+          <div className="mx-auto max-w-3xl border border-dashed border-input bg-white p-8 text-center">
+            <h2 className="font-serif text-2xl">
+              {isBuyNow ? "No Buy Now item selected" : "Your cart is empty"}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {isBuyNow
+                ? "Please choose a product and click Buy Now, or browse our collection."
+                : "Add an item before continuing to checkout."}
             </p>
             <Link
               href="/collection"
-              className="mt-5 inline-block bg-[#39231e] px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-white"
+              className="mt-5 inline-block bg-primary px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-white"
             >
               Explore the collection
             </Link>
@@ -857,5 +1096,23 @@ export default function CheckoutPage() {
       </div>
       <SiteFooter />
     </main>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background">
+          <SiteHeader />
+          <div className="container mx-auto px-4 py-16 text-center text-sm text-muted-foreground">
+            Loading checkout...
+          </div>
+          <SiteFooter />
+        </div>
+      }
+    >
+      <CheckoutForm />
+    </Suspense>
   );
 }

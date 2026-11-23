@@ -33,21 +33,21 @@ export function CartPage() {
       : STANDARD_SHIPPING_FEE;
 
   return (
-    <main className="min-h-screen bg-[#fbf8f3] text-[#33251f]">
+    <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
       <div className="container mx-auto px-4 py-9 sm:px-6 sm:py-14">
-        <p className="text-[10px] uppercase tracking-[0.25em] text-[#a44436]">
+        <p className="text-[10px] uppercase tracking-[0.25em] text-accent">
           Your edit
         </p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <h1 className="font-serif text-4xl sm:text-5xl">Shopping cart</h1>
           {items.length > 0 && (
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-[#77675d]">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
               <input
                 type="checkbox"
                 checked={allSelected}
                 onChange={(event) => toggleAllSelected(event.target.checked)}
-                className="accent-[#8d3428]"
+                className="accent-accent"
               />
               Select all ({items.length})
             </label>
@@ -56,22 +56,22 @@ export function CartPage() {
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
           {items.length ? (
-            <div className="border-y border-[#e8ded2]">
+            <div className="border-y border-border">
               {items.map(({ lineKey, product, size, quantity, selected }) => (
                 <article
                   key={lineKey}
-                  className="grid grid-cols-[22px_82px_1fr] gap-3 border-b border-[#e8ded2] py-4 last:border-b-0 sm:grid-cols-[22px_112px_1fr_auto] sm:gap-5"
+                  className="grid grid-cols-[22px_82px_1fr] gap-3 border-b border-border py-4 last:border-b-0 sm:grid-cols-[22px_112px_1fr_auto] sm:gap-5"
                 >
                   <input
                     type="checkbox"
                     aria-label={`Select ${product.name} for checkout`}
                     checked={selected}
                     onChange={() => toggleSelected(product.id, size)}
-                    className="mt-3 accent-[#8d3428]"
+                    className="mt-3 accent-accent"
                   />
                   <Link
                     href={`/products/${product.slug}`}
-                    className="relative aspect-[3/4] w-full overflow-hidden bg-[#eee4d8]"
+                    className="relative aspect-[3/4] w-full overflow-hidden bg-secondary"
                   >
                     <BlogCoverImage
                       src={product.image}
@@ -83,15 +83,15 @@ export function CartPage() {
                   <div className="min-w-0 py-1">
                     <Link
                       href={`/products/${product.slug}`}
-                      className="font-serif text-lg leading-tight hover:text-[#8d3428]"
+                      className="font-serif text-lg leading-tight hover:text-accent"
                     >
                       {product.name}
                     </Link>
-                    <p className="mt-1 text-[10px] uppercase tracking-wider text-[#8b796b]">
+                    <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                       {product.category} · {product.fabric}
                     </p>
                     <p className="mt-2 text-sm">{formatPrice(product.price)}</p>
-                    <div className="mt-3 flex w-fit items-center border border-[#d8cabc] bg-white">
+                    <div className="mt-3 flex w-fit items-center border border-input bg-white">
                       <button
                         type="button"
                         onClick={() =>
@@ -127,7 +127,7 @@ export function CartPage() {
                       type="button"
                       onClick={() => removeItem(product.id, size)}
                       aria-label={`Delete ${product.name} from cart`}
-                      className="mt-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-[#9b4237] hover:opacity-75"
+                      className="mt-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-accent hover:opacity-75"
                     >
                       <Trash2 size={14} />
                       <span className="sm:hidden">Remove</span>
@@ -137,24 +137,24 @@ export function CartPage() {
               ))}
             </div>
           ) : (
-            <div className="border-y border-[#e8ded2] py-16 text-center">
-              <ShoppingBag className="mx-auto text-[#a48668]" size={30} />
+            <div className="border-y border-border py-16 text-center">
+              <ShoppingBag className="mx-auto text-muted-foreground" size={30} />
               <h2 className="mt-4 font-serif text-2xl">
                 Your cart is still empty
               </h2>
-              <p className="mt-2 text-sm text-[#77675d]">
+              <p className="mt-2 text-sm text-muted-foreground">
                 The perfect piece for your next celebration is waiting.
               </p>
               <Link
                 href="/collection"
-                className="mt-5 inline-block bg-[#39231e] px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-white"
+                className="mt-5 inline-block bg-primary px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-white"
               >
                 Explore collection
               </Link>
             </div>
           )}
 
-          <aside className="h-fit border border-[#e8ded2] bg-white p-5">
+          <aside className="h-fit border border-border bg-white p-5">
             <h2 className="font-serif text-xl">Order summary</h2>
             <div className="mt-5 flex justify-between text-sm">
               <span>Selected items</span>
@@ -164,7 +164,7 @@ export function CartPage() {
               <span>Subtotal</span>
               <strong>{formatPrice(selectedTotal)}</strong>
             </div>
-            <div className="mt-3 flex justify-between text-sm text-[#77675d]">
+            <div className="mt-3 flex justify-between text-sm text-muted-foreground">
               <span>Shipping</span>
               <span>
                 {selectedTotal === 0
@@ -174,17 +174,17 @@ export function CartPage() {
                     : formatPrice(shippingFee)}
               </span>
             </div>
-            <div className="mt-4 flex justify-between border-t border-[#e8ded2] pt-4 text-sm">
+            <div className="mt-4 flex justify-between border-t border-border pt-4 text-sm">
               <span className="font-semibold">Estimated total</span>
               <strong>{formatPrice(selectedTotal + shippingFee)}</strong>
             </div>
-            <p className="mt-3 text-[10px] leading-5 text-[#77675d]">
+            <p className="mt-3 text-[10px] leading-5 text-muted-foreground">
               Free shipping on domestic orders above Rs 2,000.
             </p>
             {selectedItems.length > 0 ? (
               <Link
                 href="/checkout"
-                className="mt-5 block bg-[#39231e] py-3.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-[#52342c]"
+                className="mt-5 block bg-primary py-3.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-primary/90"
               >
                 Proceed to checkout
               </Link>
@@ -192,14 +192,14 @@ export function CartPage() {
               <button
                 type="button"
                 disabled
-                className="mt-5 block w-full cursor-not-allowed bg-[#b4aaa1] py-3.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-white"
+                className="mt-5 block w-full cursor-not-allowed bg-muted py-3.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-white"
               >
                 Proceed to checkout
               </button>
             )}
             <Link
               href="/collection"
-              className="mt-3 block border border-[#d8cabc] py-3 text-center text-[10px] uppercase tracking-wider transition hover:border-[#39231e]"
+              className="mt-3 block border border-input py-3 text-center text-[10px] uppercase tracking-wider transition hover:border-primary"
             >
               Continue shopping
             </Link>

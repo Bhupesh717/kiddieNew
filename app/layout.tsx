@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Cormorant_Garamond, Plus_Jakarta_Sans } from "next/font/google";
+import { GlobalLoaderProvider } from "@/components/providers/global-loader-provider";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -19,11 +21,11 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Majisavesh | The Royal Attire of Rajasthan",
-    template: "%s | Majisavesh",
+    default: "KiddieQuick LLP | Smart Kids, Men & Women Wear",
+    template: "%s | KiddieQuick",
   },
   description:
-    "Indian ethnic wear rooted in the royal craft traditions of Rajasthan.",
+    "Smart Kids, Men & Women Fashion by KiddieQuick LLP. High quality cottons, linens, and accessories.",
   icons: {
     icon: [{ url: "/favicon.png", type: "image/png" }],
     shortcut: "/favicon.png",
@@ -42,7 +44,9 @@ export default function RootLayout({
       className={`${cormorant.variable} ${jakarta.variable}`}
     >
       <body suppressHydrationWarning className="font-sans antialiased">
-        {children}
+        <Suspense fallback={null}>
+          <GlobalLoaderProvider>{children}</GlobalLoaderProvider>
+        </Suspense>
       </body>
     </html>
   );

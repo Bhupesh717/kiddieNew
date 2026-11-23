@@ -19,7 +19,8 @@ export function BlogCoverImage({
   const isBundledLocalAsset =
     safeSrc.startsWith("/") &&
     !safeSrc.startsWith("//") &&
-    !safeSrc.startsWith("/uploads/");
+    !safeSrc.startsWith("/uploads/") &&
+    !safeSrc.startsWith("/storage/");
 
   if (!isBundledLocalAsset) {
     return (
