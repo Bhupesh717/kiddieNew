@@ -6,13 +6,14 @@ import { SiteFooter, SiteHeader } from "@/components/site-shell";
 import { BlogCoverImage } from "@/components/storefront/blog-cover-image";
 import { SyncedProductGrid } from "@/components/storefront/synced-product-grid";
 import type { StoreCategory, StoreProduct } from "@/src/lib/store/catalog";
+import { getServerApiUrl } from "@/src/lib/api/config";
 
 export const dynamic = "force-dynamic";
 
 async function getLiveCategory(slug: string): Promise<StoreCategory | null> {
   try {
     const res = await fetch(
-      `http://127.0.0.1:8000/api/categories/${encodeURIComponent(slug)}`,
+      getServerApiUrl(`/api/categories/${encodeURIComponent(slug)}`),
       {
         cache: "no-store",
       },
@@ -30,7 +31,7 @@ async function getLiveCategory(slug: string): Promise<StoreCategory | null> {
 async function getCategoryProducts(slug: string): Promise<StoreProduct[]> {
   try {
     const res = await fetch(
-      `http://127.0.0.1:8000/api/products?category=${encodeURIComponent(slug)}`,
+      getServerApiUrl(`/api/products?category=${encodeURIComponent(slug)}`),
       {
         cache: "no-store",
       },

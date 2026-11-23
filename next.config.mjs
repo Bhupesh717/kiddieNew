@@ -33,14 +33,22 @@ const nextConfig = {
     ],
   },
   async rewrites() {
+    const rawBackend =
+      process.env.INTERNAL_API_URL ||
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      'http://127.0.0.1:8000';
+
+    const backendOrigin = rawBackend.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+
     return [
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*',
+        destination: `${backendOrigin}/api/:path*`,
       },
       {
         source: '/storage/:path*',
-        destination: 'http://127.0.0.1:8000/storage/:path*',
+        destination: `${backendOrigin}/storage/:path*`,
       },
     ];
   },

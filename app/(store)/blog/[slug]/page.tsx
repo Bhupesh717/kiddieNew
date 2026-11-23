@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { SiteFooter, SiteHeader } from "@/components/site-shell";
 import { BlogDetail } from "@/components/storefront/blog-detail";
 import type { BlogPost } from "@/src/lib/store/blog";
+import { getServerApiUrl } from "@/src/lib/api/config";
 
 export const dynamic = "force-dynamic";
 
 async function fetchPostBySlug(slug: string): Promise<BlogPost | null> {
   try {
     const res = await fetch(
-      `http://127.0.0.1:8000/api/blogs/${encodeURIComponent(slug)}`,
+      getServerApiUrl(`/api/blogs/${encodeURIComponent(slug)}`),
       {
         cache: "no-store",
       },
@@ -24,7 +25,7 @@ async function fetchPostBySlug(slug: string): Promise<BlogPost | null> {
 
 async function fetchRelatedPosts(excludeId: string): Promise<BlogPost[]> {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/blogs?status=active", {
+    const res = await fetch(getServerApiUrl("/api/blogs?status=active"), {
       cache: "no-store",
     });
     const payload = await res.json().catch(() => null);

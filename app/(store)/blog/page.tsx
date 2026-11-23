@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageIntro, SiteFooter, SiteHeader } from "@/components/site-shell";
 import { BlogListing } from "@/components/storefront/blog-listing";
 import type { BlogPost } from "@/src/lib/store/blog";
+import { getServerApiUrl } from "@/src/lib/api/config";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 
 async function getLiveBlogs(): Promise<BlogPost[]> {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/blogs?status=active", {
+    const res = await fetch(getServerApiUrl("/api/blogs?status=active"), {
       cache: "no-store",
     });
     const payload = await res.json().catch(() => null);

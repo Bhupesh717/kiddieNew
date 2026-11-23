@@ -19,12 +19,13 @@ import homeIntroImg from "@/public/home/home-intro.png";
 import fashionCtaImg from "@/public/sub-header.png";
 import { ShoppableShowcase } from "@/components/storefront/shoppable-showcase";
 import { CustomerReviews } from "@/components/storefront/customer-reviews";
+import { getServerApiUrl } from "@/src/lib/api/config";
 
 export const dynamic = "force-dynamic";
 
 async function getLiveBanners() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/banners", {
+    const res = await fetch(getServerApiUrl("/api/banners"), {
       cache: "no-store",
     });
     const payload = await res.json().catch(() => null);
@@ -37,7 +38,7 @@ async function getLiveBanners() {
 
 async function getLiveCategories() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/categories", {
+    const res = await fetch(getServerApiUrl("/api/categories"), {
       cache: "no-store",
     });
     const payload = await res.json().catch(() => null);
@@ -51,7 +52,7 @@ async function getLiveCategories() {
 async function getLiveFeaturedProducts() {
   try {
     const res = await fetch(
-      "http://127.0.0.1:8000/api/products?featured=1&limit=8",
+      getServerApiUrl("/api/products?featured=1&limit=8"),
       {
         cache: "no-store",
       },

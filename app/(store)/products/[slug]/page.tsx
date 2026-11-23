@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductDetail } from "@/components/storefront/product-detail";
 import type { StoreProduct } from "@/src/lib/store/catalog";
+import { getServerApiUrl } from "@/src/lib/api/config";
 
 export const dynamic = "force-dynamic";
 
 async function getLiveProduct(slug: string): Promise<StoreProduct | null> {
   try {
     const res = await fetch(
-      `http://127.0.0.1:8000/api/products/${encodeURIComponent(slug)}`,
+      getServerApiUrl(`/api/products/${encodeURIComponent(slug)}`),
       {
         cache: "no-store",
       },
