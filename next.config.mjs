@@ -11,6 +11,11 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'api.kiddiequick.in',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: '**',
       },
       {
