@@ -14,7 +14,7 @@ export function StoreLoginForm() {
   const [sent, setSent] = useState(false);
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function StoreLoginForm() {
 
   async function sendCode(event?: React.FormEvent<HTMLFormElement>) {
     if (event) event.preventDefault();
-    setMessage("");
+    setError("");
     setLoading(true);
     try {
       const response = await fetch("/api/auth/otp", {
@@ -40,18 +40,16 @@ export function StoreLoginForm() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {
-        setMessage(
+        setError(
           payload?.error?.message ?? "Unable to send verification code.",
         );
         return;
       }
       setSent(true);
       setResendCooldown(60);
-      setMessage(
-        payload?.data?.message || "Verification code sent to your email.",
-      );
+      setError("");
     } catch {
-      setMessage("Could not connect to authentication server.");
+      setError("Could not connect to authentication server.");
     } finally {
       setLoading(false);
     }
@@ -59,7 +57,7 @@ export function StoreLoginForm() {
 
   async function verifyCode(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage("");
+    setError("");
     setLoading(true);
     try {
       const response = await fetch("/api/auth/otp", {
@@ -72,11 +70,12 @@ export function StoreLoginForm() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {
-        setMessage(
+        setError(
           payload?.error?.message ?? "Invalid or expired verification code.",
         );
         return;
       }
+      setError("");
       setVerified(true);
       if (payload.data?.token) {
         setCustomerToken(payload.data.token);
@@ -85,7 +84,6 @@ export function StoreLoginForm() {
       if (customerData) {
         setCustomerUser(customerData);
       }
-      setMessage("Account verified and signed in successfully!");
 
       const targetUrl =
         typeof window !== "undefined"
@@ -97,7 +95,7 @@ export function StoreLoginForm() {
         router.push(targetUrl);
       }, 600);
     } catch {
-      setMessage("Could not verify code with server.");
+      setError("Could not verify code with server.");
     } finally {
       setLoading(false);
     }
@@ -219,10 +217,47 @@ export function StoreLoginForm() {
             </form>
           ) : (
             <form onSubmit={verifyCode} className="mt-8 flex flex-col gap-5">
-              <div className="border border-border bg-white px-4 py-3 text-xs text-muted-foreground">
-                A sign-in code was sent to{" "}
-                <strong className="text-primary">{email}</strong>
+              <div className="rounded-lg border border-orange-200/80 bg-orange-50/70 p-3.5 text-xs text-slate-700">
+                <div className="flex items-start gap-2.5">
+                  <Mail size={16} className="mt-0.5 shrink-0 text-orange-600" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-900">
+                      Verification code sent
+                    </p>
+                    <p className="mt-0.5 text-slate-600">
+                      We sent a 6-digit code to{" "}
+                      <strong className="text-slate-900">{email}</strong>.
+                    </p>
+                    <div className="mt-2.5 flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={loading || resendCooldown > 0}
+                        onClick={() => sendCode()}
+                        className="font-medium text-orange-700 underline underline-offset-4 hover:text-orange-900 disabled:text-slate-400 disabled:no-underline"
+                      >
+                        {resendCooldown > 0
+                          ? `Resend code in ${resendCooldown}s`
+                          : "Resend code"}
+                      </button>
+                      <span className="text-slate-300">•</span>
+                      <button
+                        type="button"
+                        disabled={loading || verified}
+                        onClick={() => {
+                          setSent(false);
+                          setCode("");
+                          setError("");
+                          setResendCooldown(0);
+                        }}
+                        className="text-slate-500 underline underline-offset-4 hover:text-slate-800"
+                      >
+                        Use another email
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
+
               <label
                 className="flex flex-col gap-2 text-xs font-medium text-foreground/90"
                 htmlFor="store-code"
@@ -263,77 +298,37 @@ export function StoreLoginForm() {
                   </>
                 )}
               </button>
-              <button
-                type="button"
-                disabled={loading || verified}
-                onClick={() => {
-                  setSent(false);
-                  setCode("");
-                  setMessage("");
-                  setResendCooldown(0);
-                }}
-                className="text-xs text-muted-foreground underline underline-offset-4"
-              >
-                Use another email
-              </button>
             </form>
           )}
-          {sent && !verified && (
-            <div className="mt-5 rounded-lg border border-orange-200/70 bg-orange-50/60 p-4 text-xs leading-5 text-slate-700">
-              <div className="flex items-start gap-2.5">
-                <Mail size={16} className="mt-0.5 shrink-0 text-orange-600" />
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    Verification code sent
-                  </p>
-                  <p className="mt-0.5 text-slate-600">
-                    We sent a 6-digit code to{" "}
-                    <span className="font-semibold text-slate-900">{email}</span>.
-                    Please check your inbox or spam folder.
-                  </p>
-                  <div className="mt-2.5 flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={loading || resendCooldown > 0}
-                      onClick={() => sendCode()}
-                      className="font-medium text-orange-700 underline underline-offset-4 hover:text-orange-900 disabled:text-slate-400 disabled:no-underline"
-                    >
-                      {resendCooldown > 0
-                        ? `Resend code in ${resendCooldown}s`
-                        : "Resend code"}
-                    </button>
-                  </div>
-                </div>
-              </div>
+
+          {error && (
+            <div
+              role="alert"
+              className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-accent"
+            >
+              <span>{error}</span>
             </div>
           )}
-          {message && (
+
+          {verified && (
             <div
               role="status"
-              className={`mt-4 rounded-md p-3 text-xs ${
-                verified
-                  ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border border-red-200 bg-red-50 text-accent"
-              }`}
+              className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800"
             >
               <div className="flex items-center gap-2 font-medium">
-                {verified ? (
-                  <Check size={15} className="text-emerald-600" />
-                ) : null}
-                <span>{message}</span>
+                <Check size={15} className="text-emerald-600" />
+                <span>Account verified and signed in successfully!</span>
               </div>
-              {verified && (
-                <p className="mt-1 text-[11px] text-emerald-700">
-                  Redirecting to collection page in a moment... Or{" "}
-                  <Link
-                    href="/collection"
-                    className="font-semibold underline underline-offset-2 hover:text-emerald-900"
-                  >
-                    click here to open now
-                  </Link>
-                  .
-                </p>
-              )}
+              <p className="mt-1 text-[11px] text-emerald-700">
+                Redirecting to collection page in a moment... Or{" "}
+                <Link
+                  href="/collection"
+                  className="font-semibold underline underline-offset-2 hover:text-emerald-900"
+                >
+                  click here to open now
+                </Link>
+                .
+              </p>
             </div>
           )}
           <p className="mt-10 border-t border-border pt-5 text-center text-[10px] leading-5 text-muted-foreground">
