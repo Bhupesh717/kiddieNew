@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { setCustomerToken, setCustomerUser } from "@/src/lib/api/customer-auth";
-
-const DEMO_CODE = "246810";
 
 export function StoreLoginForm() {
   const router = useRouter();
@@ -17,9 +15,18 @@ export function StoreLoginForm() {
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
 
-  async function sendCode(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  async function sendCode(event?: React.FormEvent<HTMLFormElement>) {
+    if (event) event.preventDefault();
     setMessage("");
     setLoading(true);
     try {
@@ -39,6 +46,7 @@ export function StoreLoginForm() {
         return;
       }
       setSent(true);
+      setResendCooldown(60);
       setMessage(
         payload?.data?.message || "Verification code sent to your email.",
       );
@@ -262,6 +270,7 @@ export function StoreLoginForm() {
                   setSent(false);
                   setCode("");
                   setMessage("");
+                  setResendCooldown(0);
                 }}
                 className="text-xs text-muted-foreground underline underline-offset-4"
               >
@@ -269,15 +278,33 @@ export function StoreLoginForm() {
               </button>
             </form>
           )}
-          {sent && (
-            <div className="mt-5 border border-dashed border-input bg-secondary p-4 text-xs leading-5 text-muted-foreground">
-              <p className="font-semibold text-primary">
-                Demo OTP:{" "}
-                <span className="font-mono tracking-[0.2em]">{DEMO_CODE}</span>
-              </p>
-              <p className="mt-1">
-                UI preview only—no email is sent and no real sign-in happens.
-              </p>
+          {sent && !verified && (
+            <div className="mt-5 rounded-lg border border-orange-200/70 bg-orange-50/60 p-4 text-xs leading-5 text-slate-700">
+              <div className="flex items-start gap-2.5">
+                <Mail size={16} className="mt-0.5 shrink-0 text-orange-600" />
+                <div>
+                  <p className="font-semibold text-slate-900">
+                    Verification code sent
+                  </p>
+                  <p className="mt-0.5 text-slate-600">
+                    We sent a 6-digit code to{" "}
+                    <span className="font-semibold text-slate-900">{email}</span>.
+                    Please check your inbox or spam folder.
+                  </p>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={loading || resendCooldown > 0}
+                      onClick={() => sendCode()}
+                      className="font-medium text-orange-700 underline underline-offset-4 hover:text-orange-900 disabled:text-slate-400 disabled:no-underline"
+                    >
+                      {resendCooldown > 0
+                        ? `Resend code in ${resendCooldown}s`
+                        : "Resend code"}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           {message && (
