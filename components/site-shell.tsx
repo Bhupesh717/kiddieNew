@@ -73,6 +73,9 @@ export function SiteHeader() {
   const userMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let active = true;
+    let isFetching = false;
+
     function syncCustomer() {
       const token = getCustomerToken();
       if (!token) {
@@ -82,7 +85,10 @@ export function SiteHeader() {
       }
       setCustomerLoggedIn(true);
       const cached = getCustomerUser();
-      if (cached) setCustomer(cached);
+      if (cached && active) setCustomer(cached);
+
+      if (isFetching) return;
+      isFetching = true;
 
       // Verify and refresh from server
       fetch("/api/users/me", {
@@ -93,15 +99,19 @@ export function SiteHeader() {
       })
         .then((r) => r.json())
         .then((res) => {
+          if (!active) return;
           if (res?.success && res.data) {
             setCustomer(res.data);
-            setCustomerUser(res.data);
+            setCustomerUser(res.data, false);
           } else if (res?.status === 401 || res?.error === "UNAUTHENTICATED") {
             setCustomer(null);
             setCustomerLoggedIn(false);
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => {
+          isFetching = false;
+        });
     }
 
     syncCustomer();
@@ -110,6 +120,7 @@ export function SiteHeader() {
     window.addEventListener("storage", syncCustomer);
 
     return () => {
+      active = false;
       window.removeEventListener(
         "kiddiequick_customer_auth_changed",
         syncCustomer,

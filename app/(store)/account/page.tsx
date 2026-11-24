@@ -172,7 +172,7 @@ function CustomerAccountContent() {
       .then((res) => {
         if (res?.success && res.data) {
           setUser(res.data);
-          setCustomerUser(res.data);
+          setCustomerUser(res.data, false);
           setNameInput(res.data.name || "");
           setPhoneInput(res.data.phone || "");
         } else if (res?.status === 401 || res?.error === "UNAUTHENTICATED") {

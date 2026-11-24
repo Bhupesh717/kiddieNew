@@ -56,12 +56,14 @@ export function getCustomerUser(): CustomerUser | null {
   }
 }
 
-export function setCustomerUser(user: CustomerUser): void {
+export function setCustomerUser(user: CustomerUser, notify = false): void {
   if (typeof window === "undefined") return;
   const json = JSON.stringify(user);
   window.localStorage.setItem(CUSTOMER_USER_KEY, json);
   window.localStorage.setItem(LEGACY_CUSTOMER_USER_KEY, json);
-  notifyCustomerAuthChanged();
+  if (notify) {
+    notifyCustomerAuthChanged();
+  }
 }
 
 export function isCustomerAuthenticated(): boolean {

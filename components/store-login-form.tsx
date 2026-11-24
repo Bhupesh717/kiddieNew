@@ -82,7 +82,7 @@ export function StoreLoginForm() {
       }
       const customerData = payload.data?.user || payload.data?.customer;
       if (customerData) {
-        setCustomerUser(customerData);
+        setCustomerUser(customerData, false);
       }
 
       const targetUrl =
