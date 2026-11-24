@@ -864,6 +864,13 @@ export function SiteHeader() {
               Shipping &amp; Returns
             </Link>
             <Link
+              href="/faq"
+              onClick={() => setMenuOpen(false)}
+              className="py-2 text-primary hover:text-accent"
+            >
+              FAQ
+            </Link>
+            <Link
               href="/contact"
               onClick={() => setMenuOpen(false)}
               className="py-2 text-primary hover:text-accent"
@@ -1225,6 +1232,9 @@ export function SiteFooter() {
               <Link href="/shipping" className="hover:text-accent transition">
                 Shipping &amp; Returns
               </Link>
+              <Link href="/faq" className="hover:text-accent transition">
+                FAQ &amp; Help Center
+              </Link>
               <Link href="/contact" className="hover:text-accent transition">
                 Contact Us
               </Link>
@@ -1270,6 +1280,13 @@ export function SiteFooter() {
         <div className="mx-auto container px-4 py-5 sm:px-6 lg:px-12 flex flex-col items-center justify-between gap-3 text-[10px] text-muted-foreground sm:flex-row">
           <span>© 2025–2026 KiddieQuick LLP. All rights reserved.</span>
           <div className="flex items-center gap-4 text-[10px]">
+            <Link
+              href="/faq"
+              className="transition hover:text-accent hover:underline underline-offset-4"
+            >
+              FAQ
+            </Link>
+            <span className="text-border">·</span>
             <Link
               href="/privacy"
               className="transition hover:text-accent hover:underline underline-offset-4"
