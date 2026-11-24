@@ -41,7 +41,7 @@ export default function ContactPage() {
       if (!response.ok || !data?.success) {
         setErrorMsg(
           data?.error?.message ||
-            "Unable to submit inquiry. Please check the fields and try again.",
+          "Unable to submit inquiry. Please check the fields and try again.",
         );
         return;
       }
@@ -75,8 +75,7 @@ export default function ContactPage() {
       <section className="mx-auto grid max-w-6xl gap-12 px-5 py-12 pb-20 md:grid-cols-[.8fr_1.2fr] lg:px-8">
         <div className="flex flex-col gap-5 text-sm text-muted-foreground">
           <p className="flex items-center gap-3">
-            <MapPin size={17} className="text-accent" /> Jaipur, Rajasthan
-            302017
+            <MapPin size={17} className="text-accent" /> 10/523, Malviya Nagar Road, Jaipur - 302017, Rajasthan, India
           </p>
           <a
             href="tel:+918824700161"

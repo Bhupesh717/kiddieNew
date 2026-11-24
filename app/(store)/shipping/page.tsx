@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 const policies = [
   [
     "Shipping",
-    "Free shipping on domestic orders above Rs 999. Orders are dispatched within 1–3 working days.",
+    "Free shipping on domestic orders above Rs 999. Orders are dispatched within 1–7 working days.",
   ],
   [
     "Express Delivery",
