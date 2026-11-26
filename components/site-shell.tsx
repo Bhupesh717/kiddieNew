@@ -232,8 +232,8 @@ export function SiteHeader() {
       {bannerVisible && (
         <div className="relative bg-primary px-8 py-1.5 text-center text-[10px] font-medium tracking-[0.16em] text-primary-foreground">
           <span>
-            KiddieQuick LLP · Smart Kids, Men &amp; Women Fashion · Free
-            Shipping above Rs. 2,000
+            KiddieQuick · Smart Kids, Men &amp; Women Fashion · Free
+            Shipping above ₹2,000
           </span>
           <button
             type="button"
@@ -263,7 +263,7 @@ export function SiteHeader() {
           <Link
             href="/"
             className="inline-flex shrink-0 items-center gap-2.5 sm:gap-3"
-            aria-label="KiddieQuick LLP home"
+            aria-label="KiddieQuick home"
           >
             <Image
               src="/logo.png"
@@ -284,7 +284,7 @@ export function SiteHeader() {
                   className="h-6 sm:h-[30px] w-auto object-contain"
                 />
               </div>
-              <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground leading-none">
+              <span className="text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground leading-none">
                 Kids · Men · Women Wear
               </span>
             </div>
@@ -303,18 +303,18 @@ export function SiteHeader() {
               <Link
                 href="/collection"
                 className={`inline-flex items-center gap-1.5 py-2 text-foreground/90 transition hover:text-accent ${collectionMenuOpen ||
-                    pathname === "/collection" ||
-                    pathname.startsWith("/categories/")
-                    ? "font-semibold text-accent"
-                    : ""
+                  pathname === "/collection" ||
+                  pathname.startsWith("/categories/")
+                  ? "font-semibold text-accent"
+                  : ""
                   }`}
               >
                 <span>Collection</span>
                 <ChevronDown
                   size={13}
                   className={`transition-transform duration-200 ${collectionMenuOpen
-                      ? "rotate-180 text-accent"
-                      : "text-muted-foreground"
+                    ? "rotate-180 text-accent"
+                    : "text-muted-foreground"
                     }`}
                 />
               </Link>
@@ -1041,8 +1041,8 @@ export function SiteFooter() {
                 <p
                   role="status"
                   className={`mt-2 text-xs font-medium ${newsletterStatus.type === "success"
-                      ? "text-emerald-700"
-                      : "text-accent"
+                    ? "text-emerald-700"
+                    : "text-accent"
                     }`}
                 >
                   {newsletterStatus.type === "success" ? "✓ " : "✕ "}
@@ -1062,25 +1062,28 @@ export function SiteFooter() {
             <Link
               href="/"
               className="inline-flex items-center gap-3"
-              aria-label="KiddieQuick LLP home"
+              aria-label="KiddieQuick home"
             >
               <Image
                 src="/logo.png"
                 alt="KiddieQuick Logo"
                 width={619}
                 height={624}
-                className="size-9 object-contain shrink-0"
+                priority
+                className="size-9 sm:size-10 object-contain shrink-0"
               />
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="font-serif text-2xl font-bold tracking-tight text-gray-900">
-                    KiddieQuick
-                  </span>
-                  <span className="rounded bg-gray-900/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gray-900">
-                    LLP
-                  </span>
+                  <Image
+                    src="/KiddieQuick-Logo.svg"
+                    alt="KiddieQuick"
+                    width={704}
+                    height={121}
+                    priority
+                    className="h-6 sm:h-[30px] w-auto object-contain"
+                  />
                 </div>
-                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <p className=" text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                   Kids · Men · Women Wear
                 </p>
               </div>
@@ -1241,7 +1244,7 @@ export function SiteFooter() {
           {/* Contact Info */}
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-              KiddieQuick LLP
+              KiddieQuick
             </p>
             <div className="mt-4 flex flex-col gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-2">
@@ -1275,7 +1278,9 @@ export function SiteFooter() {
       {/* Bottom Bar with Policies & Admin */}
       <div className="border-t border-border bg-secondary/20">
         <div className="mx-auto container px-4 py-5 sm:px-6 lg:px-12 flex flex-col items-center justify-between gap-3 text-[10px] text-muted-foreground sm:flex-row">
-          <span>© 2025–2026 KiddieQuick LLP. All rights reserved.</span>
+          <span>
+            © {new Date().getFullYear() > 2025 ? `2025–${new Date().getFullYear()}` : new Date().getFullYear()} KiddieQuick. All rights reserved.
+          </span>
           <div className="flex items-center gap-4 text-[10px]">
             <Link
               href="/faq"
