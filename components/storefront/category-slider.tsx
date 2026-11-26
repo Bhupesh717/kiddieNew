@@ -10,15 +10,11 @@ import type { StoreCategory } from "@/src/lib/store/catalog";
 type SliderState = {
   canPrev: boolean;
   canNext: boolean;
-  thumbWidthPct: number;
-  thumbOffsetPct: number;
 };
 
 const INITIAL_SLIDER_STATE: SliderState = {
   canPrev: false,
   canNext: true,
-  thumbWidthPct: 50,
-  thumbOffsetPct: 0,
 };
 
 const SLIDE_SIZE_CLASSES =
@@ -38,17 +34,10 @@ export function CategorySlider({
     if (!el) return;
 
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
-    const visibleRatio =
-      el.scrollWidth > 0 ? Math.min(1, el.clientWidth / el.scrollWidth) : 1;
-    const progress =
-      maxScroll > 0 ? Math.min(1, Math.max(0, el.scrollLeft / maxScroll)) : 0;
-    const thumbWidthPct = Math.max(15, visibleRatio * 100);
 
     setSliderState({
       canPrev: el.scrollLeft > 4,
       canNext: el.scrollLeft < maxScroll - 4,
-      thumbWidthPct,
-      thumbOffsetPct: progress * (100 - thumbWidthPct),
     });
   }, []);
 
@@ -128,7 +117,7 @@ export function CategorySlider({
           <div className="flex items-center gap-3">
             <Link
               href="/collection"
-              className="hidden items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] underline underline-offset-4 transition hover:text-accent sm:inline-flex"
+              className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] underline underline-offset-4 transition hover:text-accent"
             >
               View all <ArrowRight size={13} />
             </Link>
@@ -161,7 +150,7 @@ export function CategorySlider({
 
         <div
           ref={trackRef}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [-ms-overflow-style:none] sm:gap-4 [&::-webkit-scrollbar]:hidden"
         >
           {categories.map((category) => (
             <Link
@@ -200,27 +189,6 @@ export function CategorySlider({
               sizes="(max-width: 639px) 46vw, (max-width: 1023px) 33vw, 25vw"
               className="object-cover object-center transition duration-500 group-hover:scale-105"
             />
-          </Link>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <div
-            aria-hidden="true"
-            className="relative h-[2px] flex-1 overflow-hidden bg-border"
-          >
-            <div
-              className="absolute inset-y-0 bg-primary"
-              style={{
-                width: `${sliderState.thumbWidthPct}%`,
-                left: `${sliderState.thumbOffsetPct}%`,
-              }}
-            />
-          </div>
-          <Link
-            href="/collection"
-            className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] underline underline-offset-4 sm:hidden"
-          >
-            View all <ArrowRight size={12} />
           </Link>
         </div>
       </div>
