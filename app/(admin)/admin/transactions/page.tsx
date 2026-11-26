@@ -118,7 +118,7 @@ export default function AdminTransactionsPage() {
       <div className="flex flex-col gap-4 border-b border-border pb-7 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-            Finance &amp; Ledger · KiddieQuick LLP
+            Finance &amp; Ledger · KiddieQuick
           </p>
           <h1 className="mt-2 font-serif text-3xl text-primary sm:text-4xl">
             Transactions
@@ -161,17 +161,15 @@ export default function AdminTransactionsPage() {
                 setActiveTab(key);
                 pagination.setPage(1);
               }}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition ${
-                active
+              className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition ${active
                   ? "bg-primary text-white"
                   : "border border-border bg-white text-muted-foreground hover:bg-background hover:text-primary"
-              }`}
+                }`}
             >
               <span>{label}</span>
               <span
-                className={`px-1.5 py-0.2 text-[10px] font-semibold ${
-                  active ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground"
-                }`}
+                className={`px-1.5 py-0.2 text-[10px] font-semibold ${active ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground"
+                  }`}
               >
                 {count}
               </span>

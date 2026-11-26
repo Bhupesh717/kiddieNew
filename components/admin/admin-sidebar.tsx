@@ -83,9 +83,7 @@ export function AdminSidebar({
               <span className="font-serif text-lg font-bold tracking-tight text-primary">
                 KiddieQuick
               </span>
-              <span className="rounded bg-accent/10 px-1 py-0.2 text-[8px] font-bold uppercase tracking-wider text-accent">
-                LLP
-              </span>
+
             </div>
             <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
               Admin Portal
@@ -123,11 +121,10 @@ export function AdminSidebar({
 
           <div className="pt-1">
             <div
-              className={`flex items-center justify-between px-3 py-3 text-sm transition ${
-                isMasterRoute
+              className={`flex items-center justify-between px-3 py-3 text-sm transition ${isMasterRoute
                   ? "bg-accent/10 font-medium text-accent"
                   : "text-muted-foreground hover:bg-background"
-              }`}
+                }`}
             >
               <Link
                 href="/admin/master"
@@ -161,11 +158,10 @@ export function AdminSidebar({
                     <Link
                       key={href}
                       href={href}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs transition ${
-                        active
+                      className={`flex items-center gap-2.5 px-3 py-2 text-xs transition ${active
                           ? "bg-accent/10 font-semibold text-accent"
                           : "text-muted-foreground hover:bg-background hover:text-primary"
-                      }`}
+                        }`}
                     >
                       <Icon size={14} />
                       <span>{label}</span>

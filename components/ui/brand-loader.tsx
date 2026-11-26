@@ -71,9 +71,7 @@ export function BrandLoader({
             <span className="font-serif text-lg sm:text-xl font-bold tracking-[0.24em] text-primary uppercase">
               {text}
             </span>
-            <span className="rounded bg-accent/10 px-1 py-0.5 text-[8px] font-sans font-bold uppercase tracking-wider text-accent">
-              LLP
-            </span>
+
           </div>
 
           {/* Micro Progress Bar */}

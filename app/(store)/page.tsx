@@ -32,7 +32,7 @@ async function getLiveBanners() {
     if (payload?.success && Array.isArray(payload.data)) {
       return payload.data;
     }
-  } catch {}
+  } catch { }
   return [];
 }
 
@@ -45,7 +45,7 @@ async function getLiveCategories() {
     if (payload?.success && Array.isArray(payload.data)) {
       return payload.data;
     }
-  } catch {}
+  } catch { }
   return [];
 }
 
@@ -64,7 +64,7 @@ async function getLiveFeaturedProducts() {
           Boolean(p.isFeatured ?? p.is_featured),
       );
     }
-  } catch {}
+  } catch { }
   return [];
 }
 
@@ -414,7 +414,7 @@ export default async function HomePage() {
 
         <div className="relative container mx-auto max-w-2xl px-4 text-center sm:px-6">
           <p className="text-[10px] uppercase tracking-[0.3em] text-amber-300 font-semibold">
-            Founded in 2025 · KiddieQuick LLP
+            Founded in 2025 · KiddieQuick
           </p>
           <h2 className="mt-3 font-serif text-3xl sm:text-4xl lg:text-5xl text-white leading-tight">
             Smart, Vibrant Fashion for Little Ones &amp; Families

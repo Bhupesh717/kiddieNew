@@ -91,8 +91,7 @@ export function AdminLoginForm() {
             className="size-10 object-contain"
           />
           <span className="font-serif text-xl font-bold tracking-tight text-primary">
-            KiddieQuick{" "}
-            <span className="text-xs font-sans text-accent">LLP</span>
+            KiddieQuick
           </span>
         </Link>
         <div className="max-w-lg">
@@ -108,7 +107,7 @@ export function AdminLoginForm() {
           </p>
         </div>
         <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/90">
-          Authorized team only · KiddieQuick LLP
+          Authorized team only · KiddieQuick
         </p>
       </section>
 

@@ -88,7 +88,7 @@ export function StoreLoginForm() {
       const targetUrl =
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("redirect") ||
-            "/collection"
+          "/collection"
           : "/collection";
 
       setTimeout(() => {
@@ -117,8 +117,7 @@ export function StoreLoginForm() {
             className="size-10 object-contain"
           />
           <span className="font-serif text-xl font-bold tracking-tight text-primary">
-            KiddieQuick{" "}
-            <span className="text-xs font-sans text-accent">LLP</span>
+            KiddieQuick
           </span>
         </Link>
         <div className="relative z-10 max-w-lg">
@@ -134,7 +133,7 @@ export function StoreLoginForm() {
           </p>
         </div>
         <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/90">
-          KiddieQuick LLP · Jaipur, India
+          KiddieQuick · Jaipur, India
         </p>
         <div
           aria-hidden="true"

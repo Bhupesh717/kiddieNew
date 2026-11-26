@@ -21,11 +21,11 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "KiddieQuick LLP | Smart Kids, Men & Women Wear",
+    default: "KiddieQuick | Smart Kids, Men & Women Wear",
     template: "%s | KiddieQuick",
   },
   description:
-    "Smart Kids, Men & Women Fashion by KiddieQuick LLP. High quality cottons, linens, and accessories.",
+    "Smart Kids, Men & Women Fashion by KiddieQuick. High quality cottons, linens, and accessories.",
   icons: {
     icon: [{ url: "/favicon.png", type: "image/png" }],
     shortcut: "/favicon.png",
