@@ -108,7 +108,7 @@ export function SiteHeader() {
             setCustomerLoggedIn(false);
           }
         })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => {
           isFetching = false;
         });
@@ -160,7 +160,7 @@ export function SiteHeader() {
           setCategoryList(res.data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     fetch("/api/masters/subcategory")
       .then((r) => r.json())
@@ -169,7 +169,7 @@ export function SiteHeader() {
           setSubCategoryList(res.data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // 100% Dynamic Navigation Groups generated from live Categories & Sub Categories in Database
@@ -275,12 +275,14 @@ export function SiteHeader() {
             />
             <div className="flex flex-col items-start">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="font-serif text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl leading-none">
-                  KiddieQuick
-                </span>
-                <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gray-900 leading-none">
-                  LLP
-                </span>
+                <Image
+                  src="/KiddieQuick-Logo.svg"
+                  alt="KiddieQuick"
+                  width={704}
+                  height={121}
+                  priority
+                  className="h-6 sm:h-[30px] w-auto object-contain"
+                />
               </div>
               <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground leading-none">
                 Kids · Men · Women Wear
@@ -300,22 +302,20 @@ export function SiteHeader() {
             >
               <Link
                 href="/collection"
-                className={`inline-flex items-center gap-1.5 py-2 text-foreground/90 transition hover:text-accent ${
-                  collectionMenuOpen ||
-                  pathname === "/collection" ||
-                  pathname.startsWith("/categories/")
+                className={`inline-flex items-center gap-1.5 py-2 text-foreground/90 transition hover:text-accent ${collectionMenuOpen ||
+                    pathname === "/collection" ||
+                    pathname.startsWith("/categories/")
                     ? "font-semibold text-accent"
                     : ""
-                }`}
+                  }`}
               >
                 <span>Collection</span>
                 <ChevronDown
                   size={13}
-                  className={`transition-transform duration-200 ${
-                    collectionMenuOpen
+                  className={`transition-transform duration-200 ${collectionMenuOpen
                       ? "rotate-180 text-accent"
                       : "text-muted-foreground"
-                  }`}
+                    }`}
                 />
               </Link>
             </div>
@@ -765,9 +765,8 @@ export function SiteHeader() {
                 <span>Collection / Categories</span>
                 <ChevronDown
                   size={15}
-                  className={`transition-transform duration-200 ${
-                    mobileCollectionOpen ? "rotate-180" : ""
-                  }`}
+                  className={`transition-transform duration-200 ${mobileCollectionOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -806,9 +805,8 @@ export function SiteHeader() {
                             >
                               <ChevronDown
                                 size={12}
-                                className={`transition-transform ${
-                                  isCatOpen ? "rotate-180 text-accent" : ""
-                                }`}
+                                className={`transition-transform ${isCatOpen ? "rotate-180 text-accent" : ""
+                                  }`}
                               />
                             </button>
                           )}
@@ -946,7 +944,7 @@ export function SiteFooter() {
           setCategoryList(res.data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   async function handleNewsletterSubmit(e: FormEvent<HTMLFormElement>) {
@@ -1042,11 +1040,10 @@ export function SiteFooter() {
               {newsletterStatus && (
                 <p
                   role="status"
-                  className={`mt-2 text-xs font-medium ${
-                    newsletterStatus.type === "success"
+                  className={`mt-2 text-xs font-medium ${newsletterStatus.type === "success"
                       ? "text-emerald-700"
                       : "text-accent"
-                  }`}
+                    }`}
                 >
                   {newsletterStatus.type === "success" ? "✓ " : "✕ "}
                   {newsletterStatus.message}
